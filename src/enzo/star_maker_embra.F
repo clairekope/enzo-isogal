@@ -11,8 +11,8 @@ c
      &                      d1, x1, v1, t1,
      &                      nmax, xstart, ystart, zstart, ibuff, 
      &                      imetal, imethod, tindsf, mintdyn,
-     &                      odthresh, masseff, smthresh, level, np, 
-     &                      xp, yp, zp, up, vp, wp,
+     &                      odthresh, dthresh, masseff, smthresh, level,
+     &                      np, xp, yp, zp, up, vp, wp,
      &                      mp, tdp, tcp, metalf,
      &                      tip)
 
@@ -79,7 +79,7 @@ c
       R_PREC    up(nmax), vp(nmax), wp(nmax)
       R_PREC    mp(nmax), tdp(nmax), tcp(nmax), metalf(nmax),
      &     tip(nmax)
-      R_PREC    odthresh, masseff, smthresh, mintdyn
+      R_PREC    odthresh, dthresh, masseff, smthresh, mintdyn
 c
       R_PREC   sformsum
       save   sformsum
