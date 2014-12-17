@@ -214,7 +214,7 @@ extern "C" void FORTRAN_NAME(star_maker_embra)(int *nx, int *ny, int *nz,
 		 int *np, 
              FLOAT *xp, FLOAT *yp, FLOAT *zp, float *up, float *vp, float *wp,
 		float *mp, float *tdp, float *tcp, float *metalf,
-	     int *imetalSNIa, float *metalSNIa, float *metalfSNIa);
+	     float *tip);
 
 #ifdef STAR1
 extern "C" void FORTRAN_NAME(star_feedback1)(int *nx, int *ny, int *nz,
@@ -1166,13 +1166,24 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
 	}
       }
 
-      if (STARMAKE_METHOD(EMBRA_STAR)) {
+      /* Delete any merged particles (Mass == FLOAT_UNDEFINED) */
+      
+      for (int n = 0; n < NumberOfParticles; n++)
+	if (ParticleType[n] == SinkParticleType && 
+	    ParticleMass[n] == FLOAT_UNDEFINED)
+	  NumberOfStarParticles--;
+
+      this->CleanUpMovedParticles();
+
+    } // ENDIF sinks
+
+    if (STARMAKE_METHOD(EMBRA_STAR)) {
 
       //---- EMBRA SF ALGORITHM
 
-        NumberOfNewParticlesSoFar = NumberOfNewParticles;
+      NumberOfNewParticlesSoFar = NumberOfNewParticles;
 
-        FORTRAN_NAME(star_maker_embra)(
+      FORTRAN_NAME(star_maker_embra)(
        GridDimension, GridDimension+1, GridDimension+2,
        BaryonField[DensNum], dmfield, temperature, BaryonField[Vel1Num],
           BaryonField[Vel2Num], BaryonField[Vel3Num], cooling_time,
@@ -1191,22 +1202,11 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
           tg->ParticleVelocity[2],
        tg->ParticleMass, tg->ParticleAttribute[1], tg->ParticleAttribute[0],
        tg->ParticleAttribute[2],
-       &StarMakerTypeIaSNe, BaryonField[MetalIaNum], tg->ParticleAttribute[3]);
+       tg->ParticleAttribute[3]);
 
-        for (i = NumberOfNewParticlesSoFar; i < NumberOfNewParticles; i++)
-          tg->ParticleType[i] = NormalStarType;
-      } 
-
-      /* Delete any merged particles (Mass == FLOAT_UNDEFINED) */
-      
-      for (int n = 0; n < NumberOfParticles; n++)
-	if (ParticleType[n] == SinkParticleType && 
-	    ParticleMass[n] == FLOAT_UNDEFINED)
-	  NumberOfStarParticles--;
-
-      this->CleanUpMovedParticles();
-
-    } // ENDIF sinks
+      for (i = NumberOfNewParticlesSoFar; i < NumberOfNewParticles; i++)
+        tg->ParticleType[i] = NormalStarType;
+    }
  
     /* If not set in the above routine, then set the metal fraction to zero. */
 
