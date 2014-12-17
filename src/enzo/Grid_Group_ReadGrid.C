@@ -88,11 +88,11 @@ int grid::Group_ReadGrid(FILE *fptr, int GridID, HDF5_hid_t file_id,
     {"particle_velocity_x", "particle_velocity_y", "particle_velocity_z"};
 #ifdef WINDS
   char *ParticleAttributeLabel[] =
-    {"creation_time", "dynamical_time", "metallicity_fraction", "particle_jet_x", 
+    {"creation_time", "ignition_time", "dynamical_time", "metallicity_fraction", "particle_jet_x", 
      "particle_jet_y", "particle_jet_z", "typeia_fraction"};
 #else
   char *ParticleAttributeLabel[] = 
-    {"creation_time", "dynamical_time", "metallicity_fraction", "typeia_fraction"};
+    {"creation_time", "ignition_time", "dynamical_time", "metallicity_fraction", "typeia_fraction"};
 #endif
  
 #ifdef IO_LOG
