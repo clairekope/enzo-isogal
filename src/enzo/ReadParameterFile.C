@@ -867,6 +867,13 @@ int ReadParameterFile(FILE *fptr, TopGridData &MetaData, float *Initialdt)
     ret += sscanf(line, "StarFeedbackDistRadius = %"ISYM, &StarFeedbackDistRadius);
     ret += sscanf(line, "StarFeedbackDistCellStep = %"ISYM, &StarFeedbackDistCellStep);
 
+    ret += sscanf(line, "StarMakerDensityThreshold = %"FSYM, &StarMakerDensityThreshold);
+    ret += sscanf(line, "StarFeedbackDelayTime = %"FSYM, &StarFeedbackDelayTime);
+    ret += sscanf(line, "StarFeedbackDeltaT = %"FSYM, &StarFeedbackDeltaT);
+    ret += sscanf(line, "StarFeedbackUVLuminosity = %"FSYM, &StarFeedbackUVLuminosity);
+    ret += sscanf(line, "StarMakerJeansMassCriterion = %"ISYM, &StarMakerJeansMassCriterion);
+    ret += sscanf(line, "StarMakerEarlyStellarFeedback = %"ISYM, &StarMakerEarlyStellarFeedback);
+
     ret += sscanf(line, "StarClusterUseMetalField = %"ISYM, 
 		  &StarClusterUseMetalField);
     ret += sscanf(line, "StarClusterMinDynamicalTime = %"FSYM, 

@@ -831,6 +831,19 @@ int WriteParameterFile(FILE *fptr, TopGridData &MetaData, char *name = NULL)
           StarFeedbackDistRadius);
   fprintf(fptr, "StarFeedbackDistCellStep              = %"ISYM"\n",
           StarFeedbackDistCellStep);
+
+  fprintf(fptr, "StarMakerDensityThreshold             = %"GSYM"\n",
+          StarMakerDensityThreshold);
+  fprintf(fptr, "StarFeedbackDelayTime                 = %"GSYM"\n",
+          StarFeedbackDelayTime);
+  fprintf(fptr, "StarFeedbackDeltaT                    = %"GSYM"\n",
+          StarFeedbackDeltaT);
+  fprintf(fptr, "StarFeedbackUVLuminosity              = %"GSYM"\n",
+          StarFeedbackUVLuminosity);
+  fprintf(fptr, "StarMakerJeansMassCriterion           = %"ISYM"\n",
+          StarMakerJeansMassCriterion);
+  fprintf(fptr, "StarMakerEarlyStellarFeedback         = %"ISYM"\n",
+          StarMakerEarlyStellarFeedback);
   fprintf(fptr, "StarMakerTypeIaSNe                    = %"ISYM"\n",
 	  StarMakerTypeIaSNe);
   fprintf(fptr, "StarMakerPlanetaryNebulae             = %"ISYM"\n",
