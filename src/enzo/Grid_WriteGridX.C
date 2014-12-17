@@ -72,10 +72,10 @@ int grid::WriteGridX(FILE *fptr, char *base_name, int grid_id)
      {"particle_position_x", "particle_position_y", "particle_position_z"};
   char *ParticleVelocityLabel[] =
      {"particle_velocity_x", "particle_velocity_y", "particle_velocity_z"};
-  char *ParticleAttributeLabel[] = {"creation_time", "ignition_time", "dynamical_time",
-				    "metallicity_fraction", "particle_jet_x", "particle_jet_y", "particle_jet_z", "alpha_fraction"};
-  /*  char *ParticleAttributeLabel[] = {"creation_time", "ignition_time", "dynamical_time",
-      "metallicity_fraction", "alpha_fraction"};*/
+  char *ParticleAttributeLabel[] = {"creation_time", "dynamical_time",
+				    "metallicity_fraction", "ignition_time", "particle_jet_x", "particle_jet_y", "particle_jet_z", "alpha_fraction"};
+  /*  char *ParticleAttributeLabel[] = {"creation_time", "dynamical_time",
+      "metallicity_fraction", "ignition_time", "alpha_fraction"};*/
 #ifdef IO_LOG
   int         io_log = 1;
 #else

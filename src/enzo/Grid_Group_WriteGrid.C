@@ -143,11 +143,11 @@ int grid::Group_WriteGrid(FILE *fptr, char *base_name, int grid_id, HDF5_hid_t f
      {"particle_velocity_x", "particle_velocity_y", "particle_velocity_z"};
 #ifdef WINDS
   char *ParticleAttributeLabel[] =
-    {"creation_time", "ignition_time", "dynamical_time", "metallicity_fraction", "particle_jet_x", 
+    {"creation_time", "dynamical_time", "metallicity_fraction", "ignition_time", "particle_jet_x", 
      "particle_jet_y", "particle_jet_z", "typeia_fraction"};
 #else
   char *ParticleAttributeLabel[] = 
-    {"creation_time", "ignition_time", "dynamical_time", "metallicity_fraction", "typeia_fraction"};
+    {"creation_time", "dynamical_time", "metallicity_fraction", "ignition_time", "typeia_fraction"};
 #endif
   char *SmoothedDMLabel[] = {"Dark_Matter_Density", "Velocity_Dispersion",
 			     "Particle_x-velocity", "Particle_y-velocity",
