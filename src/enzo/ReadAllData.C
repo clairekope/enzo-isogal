@@ -120,6 +120,7 @@ int ReadAllData(char *name, HierarchyEntry *TopGrid, TopGridData &MetaData,
     if (StarParticleCreation || StarParticleFeedback) {
       NumberOfParticleAttributes = 3;
       if (StarMakerTypeIaSNe) NumberOfParticleAttributes++;
+      if (STARMAKE_METHOD(EMBRA_STAR)) NumberOfParticleAttributes++;
       AddParticleAttributes = TRUE;
     } else {
       NumberOfParticleAttributes = 0;
