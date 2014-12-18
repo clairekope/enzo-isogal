@@ -80,10 +80,6 @@ c
      &     cur_mp(cur_np), cur_ip(cur_np)
       R_PREC    odthresh, dthresh, masseff, smthresh
 c
-      R_PREC   sformsum
-      save   sformsum
-      data   sformsum/0/
-c
 c  Locals:
 c
       INTG_PREC  i, j, k, ii
@@ -161,32 +157,10 @@ c
                starfraction = min(masseff*dt/tdyn, 0.9_RKIND)
 
 c
-c  13 Nov. 2002:  stochastic star formation has been turned OFF by
-c    bwo, since the algorithm is a bit suspect.  This encourages
-c    rational settings of the minimum star mass!
-c
-#define NO_STOCHASTIC_STAR_FORMATION
-c
-#ifdef STOCHASTIC_STAR_FORMATION
-c
-c                 Keep global count of "unfullfilled" star formation
-c                 and when total is larger than threshold, then create
-c                 a star particle with the threshold mass or 1/2 the
-c                 gas in the cell, whichever is smaller.
-c
-               if (starfraction*bmass .lt. smthresh) then
-                  sformsum = sformsum + starfraction*bmass
-                  if (sformsum .lt. smthresh) goto 10
-                  starfraction = min(smthresh/bmass, 0.5_RKIND)
-                  sformsum = sformsum - starfraction*bmass
-               endif
-#else
-c
 c              is star mass greater than threshold, then make it.
 c              if it's less than threshold, go to the next cell.
 c
                if (starfraction*bmass .lt. smthresh) goto 10
-#endif
 c
 c              Create a star particle
 c
