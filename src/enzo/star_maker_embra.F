@@ -7,10 +7,10 @@ c////////////////////////  SUBROUTINE STAR_MAKER \\\\\\\\\\\\\\\\\\\\\\\
 c
       subroutine star_maker_embra(nx, ny, nz,
      &                      d, dm, temp, u, v, w, cooltime,
-     &                      dt, r, metal, dx, t, z, procnum, 
+     &                      dt, r, metal, dx, t,
      &                      d1, x1, v1, t1,
      &                      nmax, xstart, ystart, zstart, ibuff, 
-     &                      imetal, imethod, tindsf, mintdyn,
+     &                      imetal, imethod, 
      &                      odthresh, dthresh, masseff, smthresh, level,
      &                      np, xp, yp, zp, up, vp, wp,
      &                      mp, tdp, tcp, metalf,
@@ -32,19 +32,15 @@ c    r     - refinement field (non-zero if zone is further refined)
 c    dt    - current timestep
 c    dx    - zone size (code units)
 c    t     - current time
-c    z     - current redshift
 c    d1,x1,v1,t1 - factors to convert d,dx,v,t to physical units
 c    nx,ny,nz - dimensions of field arrays
 c    ibuff    - number of buffer zones at each end of grid
 c    imethod  - Hydro method (0/1 -- PPM DE/LR, 2 - ZEUS)
-c    tindsf   - if true, remove dt/t_dyn term in starfraction
 c    odthresh - overdensity threshold (some number * avg. density)
 c    masseff - gas-to-mass conversion efficiency ( 0<=masseff<=1 )
 c    smthresh - star mass threshold (only creates stars with mass >
 c        smthresh unless (random number) < starmass/smthresh )
-c    mintdyn  - minimum dynamical time, in years
 c    level - current level of refinement
-c    procnum - processor number (for output)
 c
 c  OUTPUTS:
 c
@@ -68,18 +64,17 @@ c
 c  Arguments
 c
       INTG_PREC nx, ny, nz, ibuff, nmax, np, level, imetal, imethod
-      INTG_PREC procnum, tindsf
       R_PREC    d(nx,ny,nz), dm(nx,ny,nz), temp(nx,ny,nz)
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
       R_PREC    r(nx,ny,nz), cooltime(nx,ny,nz), metal(nx,ny,nz)
-      R_PREC    dt, dx, z
+      R_PREC    dt, dx
       R_PREC    d1, x1, v1, t1
       P_PREC xstart, ystart, zstart, t
       P_PREC xp(nmax), yp(nmax), zp(nmax)
       R_PREC    up(nmax), vp(nmax), wp(nmax)
       R_PREC    mp(nmax), tdp(nmax), tcp(nmax), metalf(nmax),
      &     tip(nmax)
-      R_PREC    odthresh, dthresh, masseff, smthresh, mintdyn
+      R_PREC    odthresh, dthresh, masseff, smthresh
 c
       R_PREC   sformsum
       save   sformsum
@@ -159,13 +154,7 @@ c              6) Check to see if star is above threshold (given
 c                 in units of M_solar)
 c
 
-               if (tindsf .eq. 1) then
-                  starfraction = masseff
-                  tdyn = mintdyn*3.15d7/t1
-               else
-                  starfraction = min(masseff*dt/tdyn, 0.9_RKIND)
-                  tdyn = max(tdyn, mintdyn*3.15e7_RKIND/t1)
-               endif
+               starfraction = min(masseff*dt/tdyn, 0.9_RKIND)
 
 c
 c  13 Nov. 2002:  stochastic star formation has been turned OFF by
@@ -225,11 +214,6 @@ c
 c              Remove mass from grid
 c
                d(i,j,k) = (1._RKIND - starfraction)*d(i,j,k)
-c
-c               write(7+procnum,1000) level,bmass*starfraction,tcp(ii),
-c     &                           tdp(ii)*t1,d(i,j,k)*d1,z,metalf(ii)
-c
- 1000          format(i5,1x,6(1pe10.3,1x))
 c
 c              Do not generate more star particles than available
 c
