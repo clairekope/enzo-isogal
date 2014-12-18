@@ -203,17 +203,17 @@ extern "C" void FORTRAN_NAME(star_maker_h2reg)(int *nx, int *ny, int *nz,
 
 extern "C" void FORTRAN_NAME(star_maker_embra)(int *nx, int *ny, int *nz,
              float *d, float *dm, float *temp, float *u, float *v, float *w,
-                float *cooltime,
+             float *cooltime,
              float *dt, float *r, float *metal, float *dx, FLOAT *t,
              float *d1, float *x1, float *v1, float *t1,
              int *nmax, FLOAT *xstart, FLOAT *ystart, FLOAT *zstart,
-     		 int *ibuff,
-             int *imetal, hydro_method *imethod,
+     	     int *ibuff, int *imetal, hydro_method *imethod,
              float *odthresh, float *dthresh, float *massff, float *smthrest, 
              int *level, int *np, 
              FLOAT *xp, FLOAT *yp, FLOAT *zp, float *up, float *vp, float *wp,
-		float *mp, float *tdp, float *tcp, float *metalf,
-	     float *tip);
+	     float *mp, float *tdp, float *tcp, float *metalf, float *tip,
+             int *cur_np, float *cur_xp, float *cur_yp, float *cur_zp,
+             float *cur_mp, float *cur_ip);
 
 #ifdef STAR1
 extern "C" void FORTRAN_NAME(star_feedback1)(int *nx, int *ny, int *nz,
@@ -1185,23 +1185,23 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
       FORTRAN_NAME(star_maker_embra)(
        GridDimension, GridDimension+1, GridDimension+2,
        BaryonField[DensNum], dmfield, temperature, BaryonField[Vel1Num],
-          BaryonField[Vel2Num], BaryonField[Vel3Num], cooling_time,
+       BaryonField[Vel2Num], BaryonField[Vel3Num], cooling_time,
        &dtFixed, BaryonField[NumberOfBaryonFields], MetalPointer,
-          &CellWidthTemp, &Time,
+       &CellWidthTemp, &Time,
        &DensityUnits, &LengthUnits, &VelocityUnits, &TimeUnits,
        &MaximumNumberOfNewParticles, CellLeftEdge[0], CellLeftEdge[1],
-          CellLeftEdge[2], &GhostZones,
-       &MetallicityField, &HydroMethod, 
+       CellLeftEdge[2], &GhostZones, &MetallicityField, &HydroMethod, 
        &StarMakerOverDensityThreshold, &StarMakerDensityThreshold,
        &StarMakerMassEfficiency,
        &StarMakerMinimumMass, &level, &NumberOfNewParticles, 
        tg->ParticlePosition[0], tg->ParticlePosition[1],
-          tg->ParticlePosition[2],
+       tg->ParticlePosition[2],
        tg->ParticleVelocity[0], tg->ParticleVelocity[1],
-          tg->ParticleVelocity[2],
+       tg->ParticleVelocity[2],
        tg->ParticleMass, tg->ParticleAttribute[1], tg->ParticleAttribute[0],
-       tg->ParticleAttribute[2],
-       tg->ParticleAttribute[3]);
+       tg->ParticleAttribute[2], tg->ParticleAttribute[3],
+       &NumberOfParticles, this->ParticlePosition[0], this->ParticlePosition[1],
+       this->ParticlePosition[2], this->ParticleMass, this->ParticleAttribute[3]);
 
       for (i = NumberOfNewParticlesSoFar; i < NumberOfNewParticles; i++)
         tg->ParticleType[i] = NormalStarType;

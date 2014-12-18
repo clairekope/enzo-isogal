@@ -13,8 +13,9 @@ c
      &                      imetal, imethod, 
      &                      odthresh, dthresh, masseff, smthresh, level,
      &                      np, xp, yp, zp, up, vp, wp,
-     &                      mp, tdp, tcp, metalf,
-     &                      tip)
+     &                      mp, tdp, tcp, metalf, tip,
+     &                      cur_np, cur_xp, cur_yp, cur_zp,
+     &                      cur_mp, cur_ip)
 
 c
 c  CREATES GALAXY PARTICLES
@@ -63,7 +64,8 @@ c-----------------------------------------------------------------------
 c
 c  Arguments
 c
-      INTG_PREC nx, ny, nz, ibuff, nmax, np, level, imetal, imethod
+      INTG_PREC nx, ny, nz, ibuff, nmax, np, level, imetal, imethod,
+     &      cur_np
       R_PREC    d(nx,ny,nz), dm(nx,ny,nz), temp(nx,ny,nz)
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
       R_PREC    r(nx,ny,nz), cooltime(nx,ny,nz), metal(nx,ny,nz)
@@ -74,6 +76,8 @@ c
       R_PREC    up(nmax), vp(nmax), wp(nmax)
       R_PREC    mp(nmax), tdp(nmax), tcp(nmax), metalf(nmax),
      &     tip(nmax)
+      R_PREC    cur_xp(cur_np), cur_yp(cur_np), cur_zp(cur_np),
+     &     cur_mp(cur_np), cur_ip(cur_np)
       R_PREC    odthresh, dthresh, masseff, smthresh
 c
       R_PREC   sformsum
