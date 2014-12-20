@@ -302,6 +302,7 @@ int InitializeNew(char *filename, HierarchyEntry &TopGrid,
     if (StarParticleCreation || StarParticleFeedback) {
       NumberOfParticleAttributes = 3;
       if (StarMakerTypeIaSNe) NumberOfParticleAttributes++;
+      if (STARMAKE_METHOD(EMBRA_STAR)) NumberOfParticleAttributes++;
     } else {
       NumberOfParticleAttributes = 0;
     }

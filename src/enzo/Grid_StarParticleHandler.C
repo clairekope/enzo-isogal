@@ -214,7 +214,7 @@ extern "C" void FORTRAN_NAME(star_maker_embra)(int *nx, int *ny, int *nz,
 	     float *mp, float *tdp, float *tcp, float *metalf, float *tip,
              int *cur_np, FLOAT *cur_xp, FLOAT *cur_yp, FLOAT *cur_zp,
              float *cur_up, float *cur_vp, float *cur_wp,
-             float *cur_mp, float *cur_metal, float *cur_ip);
+             float *cur_mp, float *cur_tcp, float *cur_metal, float *cur_ip);
 
 #ifdef STAR1
 extern "C" void FORTRAN_NAME(star_feedback1)(int *nx, int *ny, int *nz,
@@ -1204,7 +1204,8 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
        &NumberOfParticles, 
        this->ParticlePosition[0], this->ParticlePosition[1], this->ParticlePosition[2], 
        this->ParticleVelocity[0], this->ParticleVelocity[1], this->ParticleVelocity[2],
-       this->ParticleMass, this->ParticleAttribute[2], this->ParticleAttribute[3]);
+       this->ParticleMass, this->ParticleAttribute[0],
+       this->ParticleAttribute[2], this->ParticleAttribute[3]);
 
       for (i = NumberOfNewParticlesSoFar; i < NumberOfNewParticles; i++)
         tg->ParticleType[i] = NormalStarType;
@@ -1237,7 +1238,7 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
  
       if (debug)
 	printf("Grid_StarParticleHandler: New StarParticles = %"ISYM"\n", NumberOfNewParticles);
- 
+
       /* Set the particle numbers.  The correct indices will be assigned in 
 	 CommunicationUpdateStarParticleCount in StarParticleFinalize later.*/
  

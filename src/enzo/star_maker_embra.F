@@ -16,7 +16,7 @@ c
      &                      mp, tdp, tcp, metalf, tip,
      &                      cur_np, cur_xp, cur_yp, cur_zp,
      &                      cur_up, cur_vp, cur_wp,
-     &                      cur_mp, cur_metal, cur_tip)
+     &                      cur_mp, cur_tcp, cur_metal, cur_tip)
 
 c
 c  CREATES GALAXY PARTICLES
@@ -79,7 +79,8 @@ c
      &     metalf(nmax), tip(nmax)
       P_PREC    cur_xp(cur_np), cur_yp(cur_np), cur_zp(cur_np)
       R_PREC    cur_up(cur_np), cur_vp(cur_np), cur_wp(cur_np),
-     &     cur_mp(cur_np), cur_metal(cur_np), cur_tip(cur_np)
+     &     cur_mp(cur_np), cur_tcp(cur_np), cur_metal(cur_np),
+     &     cur_tip(cur_np)
       R_PREC    odthresh, dthresh, masseff, smthresh
 c
 c  Locals:
@@ -103,6 +104,10 @@ c
       enddo
 
       do n=1,cur_np
+c
+c     Check to see if this particle is a star.
+c
+         if (cur_tcp(n) .lt. 0._RKIND) goto 34
 c
 c     If star has already turned on, skip it.
 c
