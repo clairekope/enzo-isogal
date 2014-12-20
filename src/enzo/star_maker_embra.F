@@ -3,7 +3,7 @@
 #include "error.def"
 
 c=======================================================================
-c////////////////////////  SUBROUTINE STAR_MAKER \\\\\\\\\\\\\\\\\\\\\\\
+c/////////////////////  SUBROUTINE STAR_MAKER_EMBRA \\\\\\\\\\\\\\\\\\\\
 c
       subroutine star_maker_embra(nx, ny, nz,
      &                      d, dm, temp, u, v, w, cooltime,
@@ -11,7 +11,7 @@ c
      &                      d1, x1, v1, t1,
      &                      nmax, xstart, ystart, zstart, ibuff, 
      &                      imetal, imethod, 
-     &                      odthresh, dthresh, masseff, smthresh, level,
+     &                      odthresh, dthresh, masseff,
      &                      np, xp, yp, zp, up, vp, wp,
      &                      mp, tdp, tcp, metalf, tip,
      &                      cur_np, cur_xp, cur_yp, cur_zp,
@@ -19,43 +19,58 @@ c
      &                      cur_mp, cur_tcp, cur_metal, cur_tip)
 
 c
-c  CREATES GALAXY PARTICLES
+c  CREATE EMBRA STAR PARTICLES
 c
+c  Embra particles are formed at a rate given by the KS relation
+c  where the mass that goes into a star particle is:
+c  m_star = m_cell * c * dt / tdyn,
+c  where c is the star formation efficiency.
 c
+c  Star particles grow in mass over multiple timesteps until reaching 
+c  a final mass of (m_cell * c), at which time they are turned on.
+c  When a star is turned on, it emits early stellar feedback as 
+c  thermal energy for a period of time until it explodes.
+c  All supernova feedback is injected in a single timestep to yield 
+c  a given change in temperature, dT.
 c
 c  INPUTS:
 c
-c    d     - density field
-c    dm    - dark matter field
-c    temp  - temperature field
-c    u,v,w - velocity fields
-c    cooltime - cooling time in code units
-c    r     - refinement field (non-zero if zone is further refined)
-c    dt    - current timestep
-c    dx    - zone size (code units)
-c    t     - current time
-c    d1,x1,v1,t1 - factors to convert d,dx,v,t to physical units
 c    nx,ny,nz - dimensions of field arrays
+c    d        - density field
+c    dm       - dark matter field
+c    temp     - temperature field
+c    u,v,w    - velocity fields
+c    cooltime - cooling time in code units
+c    dt       - current timestep
+c    r        - refinement field (non-zero if zone is further refined)
+c    metal    - metal field (converted to a fraction)
+c    dx       - zone size (code units)
+c    t        - current time (code units)
+c    d1,x1,v1,t1 - density, length, velocity, and time units
+c    x/y/z start - starting position of grid origin
 c    ibuff    - number of buffer zones at each end of grid
 c    imethod  - Hydro method (0/1 -- PPM DE/LR, 2 - ZEUS)
-c    odthresh - overdensity threshold (some number * avg. density)
-c    masseff - gas-to-mass conversion efficiency ( 0<=masseff<=1 )
-c    smthresh - star mass threshold (only creates stars with mass >
-c        smthresh unless (random number) < starmass/smthresh )
-c    level - current level of refinement
+c    odthresh - overdensity threshold
+c    dthresh  - density threshold in proper CGS
+c    masseff  - fraction of gas mass converted into stars
 c
 c  OUTPUTS:
 c
-c    np   - number of particles created
-c    x/y/z start - starting position of grid origin
+c    np      - number of particles created
 c    xp,yp,zp - positions of created particles
 c    up,vp,wp - velocities of created particles
 c    mp       - mass of new particles
 c    tdp      - dynamical time of zone in which particle created
 c    tcp      - creation time of particle
 c    metalf   - metallicity fraction of particle
-c    tip - metallicity fraction of particle (from SN Ia)
+c    tip      - particle ignition time
 c    nmax     - particle array size specified by calling routine
+c    cur_np   - current number of particles in grid
+c    cur_xp, cur_yp, cur_zp, 
+c    cur_up, cur_vp, cur_wp,
+c    cur_mp, cur_tcp, cur_metal, 
+c    cur_tip  - position, velocity, mass, creation time, 
+c               metal fraction, and ignition time of current particles
 c
 c
 c-----------------------------------------------------------------------
@@ -65,7 +80,7 @@ c-----------------------------------------------------------------------
 c
 c  Arguments
 c
-      INTG_PREC nx, ny, nz, ibuff, nmax, np, level, imetal, imethod,
+      INTG_PREC nx, ny, nz, ibuff, nmax, np, imetal, imethod,
      &      cur_np
       R_PREC    d(nx,ny,nz), dm(nx,ny,nz), temp(nx,ny,nz)
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
@@ -81,7 +96,7 @@ c
       R_PREC    cur_up(cur_np), cur_vp(cur_np), cur_wp(cur_np),
      &     cur_mp(cur_np), cur_tcp(cur_np), cur_metal(cur_np),
      &     cur_tip(cur_np)
-      R_PREC    odthresh, dthresh, masseff, smthresh
+      R_PREC    odthresh, dthresh, masseff
 c
 c  Locals:
 c
@@ -135,13 +150,17 @@ c
 
       ii = np
 c
-c  for each zone, : "star" particle is created if answers to all the
+c  For each zone, a star particle is created if answers to all the
 c  following questions are affirmative:
 c
 c    is this the finest level of refinement ?
 c    is the density/overdensity greater than a critical density/overdensity ?
 c    is the flow convergent ?
 c    is the cooling time less than a dynamical time ? 
+c
+c  Before forming a new star, we check to see if a star already exists in
+c  that grid cell that has not reached its target mass.  If so, we put the 
+c  stellar mass into that particle.
 c
       do k=1+ibuff,nz-ibuff
          do j=1+ibuff,ny-ibuff
