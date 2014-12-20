@@ -253,7 +253,9 @@ c
 c                 If target mass reached, turn this star on.
 c
                   if (((targetmass - cur_mp(n)) / targetmass) .le.
-     &                 1.e-3_RKIND) cur_tip(n) = t
+     &                 1.e-3_RKIND) then
+                     cur_tip(n) = t
+                  endif
 
                endif
 c
@@ -272,6 +274,15 @@ c
                   xp(ii) = xstart + (REAL(i,RKIND)-0.5_RKIND)*dx
                   yp(ii) = ystart + (REAL(j,RKIND)-0.5_RKIND)*dx
                   zp(ii) = zstart + (REAL(k,RKIND)-0.5_RKIND)*dx
+
+c
+c                 If target mass reached, turn this star on.
+c
+                  if (((targetmass - mp(ii)) / targetmass) .le.
+     &                 1.e-3_RKIND) then
+                     tip(ii) = t
+                  endif
+
                   if (imethod .eq. 2) then
                      up(ii) = 0.5_RKIND*(u(i,j,k)+u(i+1,j,k))
                      vp(ii) = 0.5_RKIND*(v(i,j,k)+v(i,j+1,k))
@@ -281,6 +292,7 @@ c
                      vp(ii) = v(i,j,k)
                      wp(ii) = w(i,j,k)
                   endif
+
 c
 c                 Set the particle metal fraction
 c
@@ -297,7 +309,7 @@ c
 
                enddo
 
-10          continue
+ 10            continue
 
             enddo
          enddo
