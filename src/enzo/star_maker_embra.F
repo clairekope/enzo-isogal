@@ -15,7 +15,8 @@ c
      &                      np, xp, yp, zp, up, vp, wp,
      &                      mp, tdp, tcp, metalf, tip,
      &                      cur_np, cur_xp, cur_yp, cur_zp,
-     &                      cur_mp, cur_ip)
+     &                      cur_up, cur_vp, cur_wp,
+     &                      cur_mp, cur_metal, cur_tip)
 
 c
 c  CREATES GALAXY PARTICLES
@@ -77,40 +78,87 @@ c
       R_PREC    mp(nmax), tdp(nmax), tcp(nmax), metalf(nmax),
      &     tip(nmax)
       R_PREC    cur_xp(cur_np), cur_yp(cur_np), cur_zp(cur_np),
-     &     cur_mp(cur_np), cur_ip(cur_np)
+     &     cur_up(cur_np), cur_vp(cur_np), cur_wp(cur_np),
+     &     cur_mp(cur_np), cur_metal(cur_np), cur_tip(cur_np)
       R_PREC    odthresh, dthresh, masseff, smthresh
 c
 c  Locals:
 c
-      INTG_PREC  i, j, k, ii
+      INTG_PREC  i, j, k, ii, n, newst
       R_PREC   div, tdyn, dtot
       R_PREC   pi, G, sndspdC
       R_PREC   isosndsp2, starmass, starfraction, bmass, jeanmass
+      R_PREC   targetmass, newstarmass, newmassthisstar
+      R_PREC   starid(nx,ny,nz)
       real*8 msolar
       parameter (pi=pi_val, G=GravConst, 
      &           sndspdC=1.3095e8_RKIND,
      &           msolar=SolarMass)
 c
+c     Check to see if a grid cell contains a star that has not
+c     reached its final mass.
+c
+      do k=1+ibuff,nz-ibuff
+         do j=1+ibuff,ny-ibuff
+            do i=1+ibuff,nx-ibuff
+               starid(i,j,k) = -1
+            enddo
+         enddo
+      enddo
+
+      do n=1,cur_np
+c
+c     If star has already turned on, skip it.
+c
+         if (cur_tip(n) .ge. 0._RKIND) goto 34
+c
+c     Compute index of the cell that the star particle resides in.
+c
+         i = int((cur_xp(n) - xstart)/dx,IKIND) + 1
+         j = int((cur_yp(n) - ystart)/dx,IKIND) + 1
+         k = int((cur_zp(n) - zstart)/dx,IKIND) + 1
+c
+c     If star has reached target mass, turn it on.
+c
+         targetmass = masseff * d(i,j,k)
+         if (cur_mp(n) .ge. targetmass) then
+            cur_tip(n) = t
+            goto 34
+         endif
+
+         starid(i,j,k) = n
+
+ 34      continue
+
+      enddo
+
       ii = np
 c
 c  for each zone, : "star" particle is created if answers to all the
 c  following questions are affirmative:
 c
 c    is this the finest level of refinement ?
-c    is the density greater than a critical density ?
+c    is the density/overdensity greater than a critical density/overdensity ?
 c    is the flow convergent ?
 c    is the cooling time less than a dynamical time ? 
-c    is the gas mass greater than the Jeans mass?
 c
       do k=1+ibuff,nz-ibuff
          do j=1+ibuff,ny-ibuff
             do i=1+ibuff,nx-ibuff
 c
+c              0) Do not generate more star particles than available
+c
+               if (ii .eq. nmax) goto 20
+c
 c              1) is this finest level of refinement?
 c
                if (r(i,j,k) .ne. 0._RKIND) goto 10
 c
-c              2) is density greater than threshold?
+c              2) is density greater than density threshold?
+c
+               if (d(i,j,k)*d1 .lt. dthresh) goto 10
+c
+c              2.5) is density greater than overdensity threshold?
 c
                if (d(i,j,k) .lt. odthresh) goto 10
 c
@@ -137,65 +185,117 @@ c
                if (tdyn .lt. cooltime(i,j,k) .and. 
      &             temp(i,j,k) .gt. 1.1e4_RKIND) goto 10
 c
-c              5) is M > M_Jeans? (this definition involves only baryons under
-c                 the assumption that the dark matter is stable, which
-c                 implies that the dark matter velocity dispersion is >> 
-c                 the sound speed.  This will be true for small perturbations
-c                 within large halos).
+c              Calculate amount of mass to convert into stars.
 c
-               bmass = d(i,j,k)*dble(d1)*dble(x1*dx)**3 / msolar
-               isosndsp2 = sndspdC * temp(i,j,k)
-               jeanmass = pi/(6._RKIND*sqrt(d(i,j,k)*dble(d1))) *
-     &                    dble(pi * isosndsp2 / G)**1.5_RKIND / msolar
-
-               if (bmass .lt. jeanmass) goto 10
+               targetmass = masseff * d(i,j,k)
 c
-c              6) Check to see if star is above threshold (given
-c                 in units of M_solar)
+c              Use at most half the cell mass
 c
-
+               newstarmass = min((targetmass * dt / tdyn),
+     &              (0.5_RKIND * d(i,j,k)))
+c
+c              5) Check if a star already exists at this location.
+c
                starfraction = min(masseff*dt/tdyn, 0.9_RKIND)
+               if (starid(i,j,k) .gt. 0) then
+                  n = starid(i,j,k)
+c
+c                 Calculate how much mass to add to un-ignited star.
+c
+                  newmassthisstar = min(newstarmass,
+     &                 (targetmass - cur_mp(n)))
+                  newmassthisstar = max(newmassthisstar, 0._RKIND)
 
 c
-c              is star mass greater than threshold, then make it.
-c              if it's less than threshold, go to the next cell.
+c                 Add metals to star.
 c
-               if (starfraction*bmass .lt. smthresh) goto 10
+                  if (imetal .eq. 1) then
+                     cur_metal(n) = (cur_metal(n) * cur_mp(n) +
+     &                    metal(i,j,k) * newmassthisstar) /
+     &                    (cur_mp(n) + newmassthisstar)
+                  endif
 c
-c              Create a star particle
+c                 Add momentum.
 c
-               ii = ii + 1
-               mp(ii)  = starfraction * d(i,j,k)
-               tcp(ii) = t
-               tdp(ii) = tdyn
-               xp(ii) = xstart + (REAL(i,RKIND)-0.5_RKIND)*dx
-               yp(ii) = ystart + (REAL(j,RKIND)-0.5_RKIND)*dx
-               zp(ii) = zstart + (REAL(k,RKIND)-0.5_RKIND)*dx
-               if (imethod .eq. 2) then
-                  up(ii) = 0.5_RKIND*(u(i,j,k)+u(i+1,j,k))
-                  vp(ii) = 0.5_RKIND*(v(i,j,k)+v(i,j+1,k))
-                  wp(ii) = 0.5_RKIND*(w(i,j,k)+w(i,j,k+1))
-               else
-                  up(ii) = u(i,j,k)
-                  vp(ii) = v(i,j,k)
-                  wp(ii) = w(i,j,k)
+                  if (imethod .ne. 2) then
+                     cur_up(n) = (cur_mp(n) * cur_up(n) +
+     &                    newmassthisstar * u(i,j,k)) /
+     &                    (cur_mp(n) + newmassthisstar)
+                     cur_vp(n) = (cur_mp(n) * cur_vp(n) +
+     &                    newmassthisstar * v(i,j,k)) /
+     &                    (cur_mp(n) + newmassthisstar)
+                     cur_wp(n) = (cur_mp(n) * cur_wp(n) +
+     &                    newmassthisstar * w(i,j,k)) /
+     &                    (cur_mp(n) + newmassthisstar)
+                  else
+                     cur_up(n) = (cur_mp(n) * cur_up(n) +
+     &                    newmassthisstar * 0.5 *
+     &                    (u(i,j,k) + u(i+1,j,k))) /
+     &                    (cur_mp(n) + newmassthisstar)
+                     cur_vp(n) = (cur_mp(n) * cur_vp(n) +
+     &                    newmassthisstar * 0.5 *
+     &                    (v(i,j,k) + v(i,j+1,k))) /
+     &                    (cur_mp(n) + newmassthisstar)
+                     cur_wp(n) = (cur_mp(n) * cur_wp(n) +
+     &                    newmassthisstar * 0.5 *
+     &                    (w(i,j,k) + w(i,j,k+1))) /
+     &                    (cur_mp(n) + newmassthisstar)
+                  endif
+
+c
+c                 Add mass to star and remove from grid cell 
+c                 and total star formation budget.
+c
+                  cur_mp(n) = cur_mp(n) + newmassthisstar
+                  d(i,j,k) = d(i,j,k) - newmassthisstar
+                  newstarmass = newstarmass - newmassthisstar
+c
+c                 If target mass reached, turn this star on.
+c
+                  if (((targetmass - cur_mp(n)) / targetmass) .le.
+     &                 1.e-3_RKIND) cur_tip(n) = t
+
                endif
 c
-c              Set the particle metal fraction
+c              Create new star particles until mass is gone
 c
-               if (imetal .eq. 1) then
-                  metalf(ii) = metal(i,j,k)    ! in here metal is a fraction
-               else
-                  metalf(ii) = 0._RKIND
-               endif
+               newst = int(newstarmass / targetmass) + 1
+               do n=1,newst
+
+                  if (newstarmass .le. 0._RKIND) goto 10
+
+                  ii = ii + 1
+                  newmassthisstar = min(newstarmass, targetmass)
+                  mp(ii)  = newmassthisstar
+                  tcp(ii) = t
+                  tdp(ii) = tdyn
+                  xp(ii) = xstart + (REAL(i,RKIND)-0.5_RKIND)*dx
+                  yp(ii) = ystart + (REAL(j,RKIND)-0.5_RKIND)*dx
+                  zp(ii) = zstart + (REAL(k,RKIND)-0.5_RKIND)*dx
+                  if (imethod .eq. 2) then
+                     up(ii) = 0.5_RKIND*(u(i,j,k)+u(i+1,j,k))
+                     vp(ii) = 0.5_RKIND*(v(i,j,k)+v(i,j+1,k))
+                     wp(ii) = 0.5_RKIND*(w(i,j,k)+w(i,j,k+1))
+                  else
+                     up(ii) = u(i,j,k)
+                     vp(ii) = v(i,j,k)
+                     wp(ii) = w(i,j,k)
+                  endif
 c
-c              Remove mass from grid
+c                 Set the particle metal fraction
 c
-               d(i,j,k) = (1._RKIND - starfraction)*d(i,j,k)
+                  if (imetal .eq. 1) then
+                     metalf(ii) = metal(i,j,k) ! in here metal is a fraction
+                  else
+                     metalf(ii) = 0._RKIND
+                  endif
 c
-c              Do not generate more star particles than available
+c                 Remove mass from grid
 c
-               if (ii .eq. nmax) goto 20
+                  d(i,j,k) = d(i,j,k) - newmassthisstar
+                  newstarmass = newstarmass - newmassthisstar
+
+               enddo
 
 10          continue
 
@@ -205,15 +305,11 @@ c
  20   continue
 c
       if (ii .ge. nmax) then
-         write(6,*) 'star_maker2: reached max new particle count'
+         write(6,*) 'star_maker_embra: reached max new particle count'
          ERROR_MESSAGE
       endif
       np = ii
-c
-c      if (np .ne. 0) then
-c         write(6,*) 'Stars created: number,time,level: ', np, t, level
-c      endif
-cc
+
       return
       end
 c

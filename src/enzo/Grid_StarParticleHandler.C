@@ -213,7 +213,8 @@ extern "C" void FORTRAN_NAME(star_maker_embra)(int *nx, int *ny, int *nz,
              FLOAT *xp, FLOAT *yp, FLOAT *zp, float *up, float *vp, float *wp,
 	     float *mp, float *tdp, float *tcp, float *metalf, float *tip,
              int *cur_np, float *cur_xp, float *cur_yp, float *cur_zp,
-             float *cur_mp, float *cur_ip);
+             float *cur_up, float *cur_vp, float *cur_wp,
+             float *cur_mp, float *cur_metal, float *cur_ip);
 
 #ifdef STAR1
 extern "C" void FORTRAN_NAME(star_feedback1)(int *nx, int *ny, int *nz,
@@ -1200,8 +1201,10 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
        tg->ParticleVelocity[2],
        tg->ParticleMass, tg->ParticleAttribute[1], tg->ParticleAttribute[0],
        tg->ParticleAttribute[2], tg->ParticleAttribute[3],
-       &NumberOfParticles, this->ParticlePosition[0], this->ParticlePosition[1],
-       this->ParticlePosition[2], this->ParticleMass, this->ParticleAttribute[3]);
+       &NumberOfParticles, 
+       this->ParticlePosition[0], this->ParticlePosition[1], this->ParticlePosition[2], 
+       this->ParticleVelocity[0], this->ParticleVelocity[1], this->ParticleVelocity[2],
+       this->ParticleMass, this->ParticleAttribute[2], this->ParticleAttribute[3]);
 
       for (i = NumberOfNewParticlesSoFar; i < NumberOfNewParticles; i++)
         tg->ParticleType[i] = NormalStarType;
