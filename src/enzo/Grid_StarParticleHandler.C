@@ -351,17 +351,17 @@ extern "C" void FORTRAN_NAME(cluster_maker)
 
 extern "C" void FORTRAN_NAME(star_feedback_embra)(int *nx, int *ny, int *nz,
              float *d, float *dm, float *te, float *ge, float *u, float *v,
-		       float *w, float *metal,
+             float *w, float *metal,
              int *idual, int *imetal, hydro_method *imethod, float *dt,
-		       float *r, float *dx, FLOAT *t, float *z,
+             float *r, float *dx, FLOAT *t, float *z,
              float *d1, float *x1, float *v1, float *t1,
-                       float *sn_param, float *m_eject, float *yield,
-	     int *distrad, int *diststep, int *distcells,
+             float *sn_param, float *m_eject, float *yield,
+             float *tdelay, float *deltatemp, int *iearly, float *uvlum,
              int *nmax, FLOAT *xstart, FLOAT *ystart, FLOAT *zstart,
-		       int *ibuff,
+             int *ibuff,
              FLOAT *xp, FLOAT *yp, FLOAT *zp, float *up, float *vp, float *wp,
-	     float *mp, float *tdp, float *tcp, float *metalf, int *type,
-			float *justburn);
+             float *mp, float *tdp, float *tcp, float *metalf, float *tip,
+             int *type);
 
 int sink_maker(int *nx, int *ny, int *nz, int *size,
              float *d, float *u, float *v, float *w,
@@ -1511,26 +1511,27 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
  
       FORTRAN_NAME(star_feedback_embra)(
        GridDimension, GridDimension+1, GridDimension+2,
-          BaryonField[DensNum], dmfield,
-          BaryonField[TENum], BaryonField[GENum], BaryonField[Vel1Num],
-          BaryonField[Vel2Num], BaryonField[Vel3Num], MetalPointer,
+       BaryonField[DensNum], dmfield,
+       BaryonField[TENum], BaryonField[GENum], BaryonField[Vel1Num],
+       BaryonField[Vel2Num], BaryonField[Vel3Num], MetalPointer,
        &DualEnergyFormalism, &MetallicityField, &HydroMethod,
        &dtFixed, BaryonField[NumberOfBaryonFields], &CellWidthTemp,
-          &Time, &zred,
+       &Time, &zred,
        &DensityUnits, &LengthUnits, &VelocityUnits, &TimeUnits,
-          &StarEnergyToThermalFeedback, &StarMassEjectionFraction,
-          &StarMetalYield, &StarFeedbackDistRadius, &StarFeedbackDistCellStep, 
-       &StarFeedbackDistTotalCells,
+       &StarEnergyToThermalFeedback, &StarMassEjectionFraction,
+       &StarMetalYield, 
+       &StarFeedbackDelayTime, &StarFeedbackDeltaT,
+       &StarMakerEarlyStellarFeedback, &StarFeedbackUVLuminosity,
        &NumberOfParticles,
-          CellLeftEdge[0], CellLeftEdge[1], CellLeftEdge[2], &GhostZones,
+       CellLeftEdge[0], CellLeftEdge[1], CellLeftEdge[2], &GhostZones,
        ParticlePosition[0], ParticlePosition[1],
-          ParticlePosition[2],
+       ParticlePosition[2],
        ParticleVelocity[0], ParticleVelocity[1],
-          ParticleVelocity[2],
+       ParticleVelocity[2],
        ParticleMass, ParticleAttribute[1], ParticleAttribute[0],
-       ParticleAttribute[2], ParticleType, &RadiationData.IntegratedStarFormation);
+       ParticleAttribute[2], ParticleAttribute[3], ParticleType);
  
-  } // end: if NORMAL_STAR
+  } // end: if EMBRA_STAR
 
   /* Convert the species back from fractional densities to real densities. */
  

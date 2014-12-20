@@ -21,6 +21,9 @@ c
 c
 c  CREATE EMBRA STAR PARTICLES
 c
+c  written by: Britton Smith
+c  date:       December 2014
+c
 c  Embra particles are formed at a rate given by the KS relation
 c  where the mass that goes into a star particle is:
 c  m_star = m_cell * c * dt / tdyn,
@@ -351,10 +354,10 @@ c
      &                      d, dm, te, ge, u, v, w, metal,
      &                      idual, imetal, imethod, dt, r, dx, t, z,
      &                      d1, x1, v1, t1, sn_param, m_eject, yield,
-     &                      distrad, diststep, distcells,
+     &                      tdelay, deltatemp, iearly, uvlum,
      &                      npart, xstart, ystart, zstart, ibuff,
      &                      xp, yp, zp, up, vp, wp,
-     &                      mp, tdp, tcp, metalf, type, justburn)
+     &                      mp, tdp, tcp, metalf, tip, type)
 
 c
 c  RELEASES "STAR" PARTICLE ENERGY, MASS AND METALS
@@ -401,13 +404,9 @@ c    npart    - particle array size specified by calling routine
 c    sn_param - fraction of stellar rest mass that goes to feedback
 c    m_eject  - fraction of stellar mass ejected back to gas
 c    yield    - fraction of stellar mass that is converted to metals
-c    distrad  - feedback distribution radius in cells
-c    diststep - distance in walking steps to deposit feedback
-c    distcells - total number of cells over which to distribute feedback
 c
 c  OUTPUTS:
 c    d,u,v,w,ge,e - modified field
-c    justburn     - time-weighted mass of star formation (code units)
 c
 c
 c-----------------------------------------------------------------------
@@ -418,48 +417,35 @@ c
 c  Arguments
 c
       INTG_PREC nx, ny, nz, ibuff, npart, idual, imetal, imethod,
-     &      distrad, diststep, distcells
+     &      iearly
       R_PREC    d(nx,ny,nz), dm(nx,ny,nz), te(nx,ny,nz)
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
       R_PREC    r(nx,ny,nz), metal(nx,ny,nz), ge(nx,ny,nz)
       R_PREC    dt, dx, z
-      R_PREC    d1, x1, v1, t1, justburn
+      R_PREC    d1, x1, v1, t1
+      R_PREC    tdelay, deltatemp, uvlum
       P_PREC xstart, ystart, zstart, t
       P_PREC xp(npart), yp(npart), zp(npart)
       R_PREC    up(npart), vp(npart), wp(npart)
-      R_PREC    mp(npart), tdp(npart), tcp(npart), metalf(npart)
+      R_PREC    mp(npart), tdp(npart), tcp(npart), metalf(npart),
+     &     tip(npart)
       INTG_PREC type(npart)
 c
 c  Locals
-c    (msolar_e51 is one solar rest mass energy divided by 10^51 erg)
 c
-      INTG_PREC i, j, k, n, ic, jc, kc, stepk, stepj, cellstep
+      INTG_PREC i, j, k, n
       R_PREC mform, tfactor, clight, energy, sn_param, msolar_e51,
      &     m_eject, yield, minitial, xv1, xv2, dratio,
      &     distmass
-      parameter (clight = c_light, msolar_e51 = 1800._RKIND)
+      parameter (clight = c_light)
 c
 c-----------------------------------------------------------------------
 c
 c     Loop over particles
 c
-c      write(6,*) 'star_feedback2: start'
       do n=1, npart
          if (tcp(n) .gt. 0 .and. mp(n) .gt. 0 .and. type(n) .eq. 2) then
 c
-
-
-c        The star particle creation algorithm partnered with this 
-c          feedback algorithm creates a star particle instantaneously.
-c          However, we do feedback as if the star particles are created 
-c          over a long period of time (in code units), so the particle
-c          actually loses mass over time in an exponentially decaying
-c          way.
-
-c        Determine how much of a given star particle would have been 
-c          turned into stars during this timestep.  Then calculate the mass
-c          which should have formed during this timestel dt using the integral
-c          form of the Cen & Ostriker formula.
 
             xv1 = (t      - tcp(n))/tdp(n)
             if (xv1 .gt. 12._RKIND) goto 10     ! t-tcp >> tdp so ignore
@@ -500,110 +486,73 @@ c
 c
 c          calculate mass added to each cell
 c
-            distmass = (mform * m_eject) / distcells
-c
-c          if using distributed feedback, check if particle is
-c          too close to the boundary
-c
-            if (distrad .gt. 0) then
-               i = max((1 + ibuff + distrad), 
-     &              min((nx - ibuff - distrad), i))
-               j = max((1 + ibuff + distrad), 
-     &              min((ny - ibuff - distrad), j))
-               k = max((1 + ibuff + distrad), 
-     &              min((nz - ibuff - distrad), k))
-            endif
+            distmass = (mform * m_eject)
 c
 c           subtract ejected mass from particle (ejection due
 c           to winds, supernovae)
 c
             mp(n) = mp(n) - mform * m_eject
 c
-c           Record amount of star formation in this grid.
-c
-            justburn = justburn + mform * dt * dx**3
-c
 c           Calculate how much of the star formation in this
 c           timestep would have gone into supernova energy.
 c
-            energy = sn_param * mform * (clight/v1)**2 / distcells
-c
-c             (aug 7/00 addition: share ejected energy between gas
-c              being ejected and that remaining in star particle)
-c
-#define NO_SHARE_ENERGY
-#ifdef SHARE_ENERGY
-            energy = energy*mform*m_eject/
-     &           (mform*m_eject + minitial*exp(-xv2)*(1._RKIND + xv2))
-#endif /* SHARE_ENERGY */
+            energy = sn_param * mform * (clight/v1)**2
 c
 c           Add energy to energy field
 c
-            do kc = k-distrad,k+distrad
-               stepk = abs(kc-k)
-               do jc = j-distrad,j+distrad
-                  stepj = stepk + abs(jc-j)
-                  do ic = i-distrad,i+distrad
-                     cellstep = stepj + abs(ic-i)
-                     if (cellstep .le. diststep) then
-                        dratio = 1._RKIND/(d(ic,jc,kc) + distmass)
-                        te(ic,jc,kc) = ((te(ic,jc,kc)*d(ic,jc,kc)) +
-     &                       energy) * dratio
-                        if (idual .eq. 1)
-     &                       ge(ic,jc,kc) = 
-     &                       ((ge(ic,jc,kc)*d(ic,jc,kc)) +
-     &                       energy) * dratio
+            dratio = 1._RKIND/(d(i,j,k) + distmass)
+            te(i,j,k) = ((te(i,j,k)*d(i,j,k)) +
+     &           energy) * dratio
+            if (idual .eq. 1)
+     &           ge(i,j,k) = 
+     &           ((ge(i,j,k)*d(i,j,k)) +
+     &           energy) * dratio
 c
 c           Metal feedback (note that in this function gas metal is
 c             a fraction (rho_metal/rho_gas) rather than a density.
 c             The conversion has been done in the handling routine)
 c
-                        if (imetal .eq. 1) then
+            if (imetal .eq. 1) then
 c
 c           "Cen method".  This takes into account gas recycling.
 c
-                           metal(ic,jc,kc) = 
-     &                          (metal(ic,jc,kc)*d(ic,jc,kc) + 
-     &                          (mform / distcells) * 
-     &                          (yield * (1._RKIND-metalf(n)) + 
-     &                          m_eject * metalf(n))) * dratio
+               metal(i,j,k) = 
+     &              (metal(i,j,k)*d(i,j,k) + 
+     &              mform * 
+     &              (yield * (1._RKIND-metalf(n)) + 
+     &              m_eject * metalf(n))) * dratio
             !metal is a fraction
 c
-                        endif
+            endif
 c
 c           Mass and momentum feedback
 c
-                        u(ic,jc,kc) = u(ic,jc,kc)*d(ic,jc,kc) +
-     &                       distmass * up(n)
-                        v(ic,jc,kc) = v(ic,jc,kc)*d(ic,jc,kc) +
-     &                       distmass * vp(n)
-                        w(ic,jc,kc) = w(ic,jc,kc)*d(ic,jc,kc) +
-     &                       distmass * wp(n)
-                        d(ic,jc,kc) = d(ic,jc,kc) + distmass
-                        u(ic,jc,kc) = u(ic,jc,kc)/d(ic,jc,kc)
-                        v(ic,jc,kc) = v(ic,jc,kc)/d(ic,jc,kc)
-                        w(ic,jc,kc) = w(ic,jc,kc)/d(ic,jc,kc)
+            u(i,j,k) = u(i,j,k)*d(i,j,k) +
+     &           distmass * up(n)
+            v(i,j,k) = v(i,j,k)*d(i,j,k) +
+     &           distmass * vp(n)
+            w(i,j,k) = w(i,j,k)*d(i,j,k) +
+     &           distmass * wp(n)
+            d(i,j,k) = d(i,j,k) + distmass
+            u(i,j,k) = u(i,j,k)/d(i,j,k)
+            v(i,j,k) = v(i,j,k)/d(i,j,k)
+            w(i,j,k) = w(i,j,k)/d(i,j,k)
 c
 c           If te is really total energy (and it is unless imethod=2),
 c             then just set this value
 c
-                        if (imethod .ne. 2 .and. idual .eq. 1) then
-                           te(ic,jc,kc) = 0.5_RKIND*(u(ic,jc,kc)**2 + 
-     &                          v(ic,jc,kc)**2 + w(ic,jc,kc)**2) +
-     &                          ge(ic,jc,kc)
-                        endif
-                     endif
-                  enddo
-               enddo
-            enddo
+            if (imethod .ne. 2 .and. idual .eq. 1) then
+               te(i,j,k) = 0.5_RKIND*(u(i,j,k)**2 + 
+     &              v(i,j,k)**2 + w(i,j,k)**2) +
+     &              ge(i,j,k)
+            endif
 c
  10         continue
          endif
 c
  100     continue
-c
+
       enddo
-c
-c      write(6,*) 'star_feedback2: end'
+
       return
       end
