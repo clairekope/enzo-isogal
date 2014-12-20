@@ -72,13 +72,13 @@ c
       R_PREC    r(nx,ny,nz), cooltime(nx,ny,nz), metal(nx,ny,nz)
       R_PREC    dt, dx
       R_PREC    d1, x1, v1, t1
-      P_PREC xstart, ystart, zstart, t
-      P_PREC xp(nmax), yp(nmax), zp(nmax)
-      R_PREC    up(nmax), vp(nmax), wp(nmax)
-      R_PREC    mp(nmax), tdp(nmax), tcp(nmax), metalf(nmax),
-     &     tip(nmax)
-      R_PREC    cur_xp(cur_np), cur_yp(cur_np), cur_zp(cur_np),
-     &     cur_up(cur_np), cur_vp(cur_np), cur_wp(cur_np),
+      P_PREC    xstart, ystart, zstart, t
+      P_PREC    xp(nmax), yp(nmax), zp(nmax)
+      R_PREC    up(nmax), vp(nmax), wp(nmax),
+     &     mp(nmax), tdp(nmax), tcp(nmax), 
+     &     metalf(nmax), tip(nmax)
+      P_PREC    cur_xp(cur_np), cur_yp(cur_np), cur_zp(cur_np)
+      R_PREC    cur_up(cur_np), cur_vp(cur_np), cur_wp(cur_np),
      &     cur_mp(cur_np), cur_metal(cur_np), cur_tip(cur_np)
       R_PREC    odthresh, dthresh, masseff, smthresh
 c
@@ -86,14 +86,10 @@ c  Locals:
 c
       INTG_PREC  i, j, k, ii, n, newst
       R_PREC   div, tdyn, dtot
-      R_PREC   pi, G, sndspdC
-      R_PREC   isosndsp2, starmass, starfraction, bmass, jeanmass
       R_PREC   targetmass, newstarmass, newmassthisstar
       R_PREC   starid(nx,ny,nz)
-      real*8 msolar
-      parameter (pi=pi_val, G=GravConst, 
-     &           sndspdC=1.3095e8_RKIND,
-     &           msolar=SolarMass)
+      R_PREC   pi, G
+      parameter (pi=pi_val, G=GravConst)
 c
 c     Check to see if a grid cell contains a star that has not
 c     reached its final mass.
@@ -196,7 +192,6 @@ c
 c
 c              5) Check if a star already exists at this location.
 c
-               starfraction = min(masseff*dt/tdyn, 0.9_RKIND)
                if (starid(i,j,k) .gt. 0) then
                   n = starid(i,j,k)
 c

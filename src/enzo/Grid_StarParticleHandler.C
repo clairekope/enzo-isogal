@@ -212,7 +212,7 @@ extern "C" void FORTRAN_NAME(star_maker_embra)(int *nx, int *ny, int *nz,
              int *level, int *np, 
              FLOAT *xp, FLOAT *yp, FLOAT *zp, float *up, float *vp, float *wp,
 	     float *mp, float *tdp, float *tcp, float *metalf, float *tip,
-             int *cur_np, float *cur_xp, float *cur_yp, float *cur_zp,
+             int *cur_np, FLOAT *cur_xp, FLOAT *cur_yp, FLOAT *cur_zp,
              float *cur_up, float *cur_vp, float *cur_wp,
              float *cur_mp, float *cur_metal, float *cur_ip);
 
