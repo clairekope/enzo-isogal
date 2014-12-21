@@ -353,7 +353,8 @@ c
       subroutine star_feedback_embra(nx, ny, nz,
      &                      d, dm, te, ge, u, v, w, metal,
      &                      idual, imetal, imethod, dt, r, dx, t, z,
-     &                      d1, x1, v1, t1, sn_param, m_eject, yield,
+     &                      d1, x1, v1, t1, temp1, gamma,
+     &                      sn_param, m_eject, yield,
      &                      tdelay, deltatemp, iearly, uvlum,
      &                      npart, xstart, ystart, zstart, ibuff,
      &                      xp, yp, zp, up, vp, wp,
@@ -422,7 +423,7 @@ c
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
       R_PREC    r(nx,ny,nz), metal(nx,ny,nz), ge(nx,ny,nz)
       R_PREC    dt, dx, z
-      R_PREC    d1, x1, v1, t1
+      R_PREC    d1, x1, v1, t1, temp1, gamma
       R_PREC    tdelay, deltatemp, uvlum
       P_PREC xstart, ystart, zstart, t
       P_PREC xp(npart), yp(npart), zp(npart)
@@ -434,45 +435,59 @@ c
 c  Locals
 c
       INTG_PREC i, j, k, n
-      R_PREC mform, tfactor, clight, energy, sn_param, msolar_e51,
-     &     m_eject, yield, minitial, xv1, xv2, dratio,
-     &     distmass
-      parameter (clight = c_light)
-c
+      R_PREC mform, tfactor, energy, sn_param,
+     &     m_eject, yield, minitial, dratio,
+     &     distmass, tdelaycode, snenergy, p_age, uv_dt,
+     &     en_early
+      LOGIC_PREC tooyoung
 c-----------------------------------------------------------------------
+c
+c     Convert delay time to code units.
+c
+      tdelaycode = tdelay * yr / t1
+c
+c     Calculate feedback energy corresponding to desired temperature change.
+c
+      snenergy = deltatemp / (gamma - 1._RKIND) / temp1
 c
 c     Loop over particles
 c
       do n=1, npart
          if (tcp(n) .gt. 0 .and. mp(n) .gt. 0 .and. type(n) .eq. 2) then
 c
-
-            xv1 = (t      - tcp(n))/tdp(n)
-            if (xv1 .gt. 12._RKIND) goto 10     ! t-tcp >> tdp so ignore
-            xv2 = (t + dt - tcp(n))/tdp(n)
-
-c        First calculate the initial mass of the star particle 
-c          in question.
-            minitial = mp(n) / 
-     &           (1._RKIND - m_eject*(1._RKIND - (1._RKIND + xv1)
-     &           *exp(-xv1)))
+c           Skip particles that have not turned on.
 c
-c       Then, calculate the amount of mass that would have formed in
-c         this timestep.
+            if (tip(n) .lt. 0._RKIND) goto 10
 c
-            mform = minitial * ((1._RKIND + xv1)*exp(-xv1) - 
-     &                          (1._RKIND + xv2)*exp(-xv2))
-            mform = max(min(mform, mp(n)), 0._RKIND)
+c           Calculate particle age (since turning on.)
 c
-c         Compute index of the cell that the star particle
+            p_age = t - tip(n)
+c
+c           Skip if supernova already occurred.
+c
+            if (p_age .gt. tdelaycode) goto 10
+c
+c           Check if SN feedback will occur this timestep.
+c
+            if (p_age + dt .lt. tip(n)) then
+               tooyoung = .true.
+            else
+               tooyoung = .false.
+            endif
+c
+c           Skip if star too young and no early feedback.
+c
+            if ((iearly .eq. 0) .and. tooyoung) goto 10
+c
+c           Compute index of the cell that the star particle
 c           resides in.
 c 
             i = int((xp(n) - xstart)/dx,IKIND) + 1
             j = int((yp(n) - ystart)/dx,IKIND) + 1
             k = int((zp(n) - zstart)/dx,IKIND) + 1
 c
-c         check bounds - if star particle is outside of this grid
-c         then exit and give a warning.
+c           Check bounds - if star particle is outside of this grid
+c           then exit and give a warning.
 c
             if (i .lt. 1 .or. i .gt. nx .or. j .lt. 1 .or. j .gt. ny
      &          .or. k .lt. 1 .or. k .gt. nz) then
@@ -480,33 +495,38 @@ c
                goto 100
             endif
 c
-c          skip if very little mass is formed.
+c           Inject thermal energy for early stellar feedback.
 c
-            if (mform/d(i,j,k) .lt. 1.e-10_RKIND) goto 10
+            if (iearly .eq. 1) then
+               uv_dt = min(dt, (tdelaycode - p_age))
+               uv_dt = max(uv_dt, 0._RKIND)
+
+               en_early = uvlum * mp(n) / SolarMass *
+     &              uv_dt * t1 / d(i,j,k) / v1**2
+
+               te(i,j,k) = te(i,j,k) + en_early
+               if (idual .eq. 1) then
+                  ge(i,j,k) = ge(i,j,k) + en_early
+               endif
+            endif
 c
-c          calculate mass added to each cell
+            if (tooyoung) goto 10
 c
-            distmass = (mform * m_eject)
+c           Calculate ejected mass from particle.
 c
-c           subtract ejected mass from particle (ejection due
-c           to winds, supernovae)
+            distmass = mp(n) * m_eject
 c
-            mp(n) = mp(n) - mform * m_eject
+c           Subtract ejected mass from particle (ejection due
+c           to winds, supernovae.)
 c
-c           Calculate how much of the star formation in this
-c           timestep would have gone into supernova energy.
-c
-            energy = sn_param * mform * (clight/v1)**2
+            mp(n) = mp(n) * (1.0_RKIND - m_eject)
 c
 c           Add energy to energy field
 c
-            dratio = 1._RKIND/(d(i,j,k) + distmass)
-            te(i,j,k) = ((te(i,j,k)*d(i,j,k)) +
-     &           energy) * dratio
-            if (idual .eq. 1)
-     &           ge(i,j,k) = 
-     &           ((ge(i,j,k)*d(i,j,k)) +
-     &           energy) * dratio
+            te(i,j,k) = te(i,j,k) + snenergy
+            if (idual .eq. 1) then
+               ge(i,j,k) = ge(i,j,k) + snenergy
+            endif
 c
 c           Metal feedback (note that in this function gas metal is
 c             a fraction (rho_metal/rho_gas) rather than a density.
@@ -516,13 +536,12 @@ c
 c
 c           "Cen method".  This takes into account gas recycling.
 c
+               dratio = 1._RKIND / (d(i,j,k) + distmass)
                metal(i,j,k) = 
-     &              (metal(i,j,k)*d(i,j,k) + 
-     &              mform * 
+     &              (metal(i,j,k) * d(i,j,k) + 
+     &              mp(n) * 
      &              (yield * (1._RKIND-metalf(n)) + 
      &              m_eject * metalf(n))) * dratio
-            !metal is a fraction
-c
             endif
 c
 c           Mass and momentum feedback
@@ -546,10 +565,10 @@ c
      &              v(i,j,k)**2 + w(i,j,k)**2) +
      &              ge(i,j,k)
             endif
-c
+
  10         continue
          endif
-c
+
  100     continue
 
       enddo
