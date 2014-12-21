@@ -3,7 +3,7 @@
 #include "error.def"
 
 c=======================================================================
-c/////////////////////  SUBROUTINE STAR_MAKER_EMBRA \\\\\\\\\\\\\\\\\\\\
+c///////////////////// SUBROUTINE STAR_MAKER_EMBRA \\\\\\\\\\\\\\\\\\\\\
 c
       subroutine star_maker_embra(nx, ny, nz,
      &                      d, dm, temp, u, v, w, cooltime,
@@ -348,15 +348,16 @@ c
       end
 c
 c=======================================================================
-c/////////////////////  SUBROUTINE STAR_FEEDBACK \\\\\\\\\\\\\\\\\\\\\\\
+c///////////////////// SUBROUTINE STAR_FEEDBACK \\\\\\\\\\\\\\\\\\\\\\\\
 c
       subroutine star_feedback_embra(nx, ny, nz,
      &                      d, te, ge, u, v, w, metal,
-     &                      idual, imetal, imethod, dt, r, dx, t, z,
+     &                      idual, imetal, imethod,
+     &                      dt, dx, t,
      &                      d1, x1, v1, t1, temp1, gamma,
      &                      sn_param, m_eject, yield,
      &                      tdelay, deltatemp, iearly, uvlum,
-     &                      npart, xstart, ystart, zstart, ibuff,
+     &                      npart, xstart, ystart, zstart,
      &                      xp, yp, zp, up, vp, wp,
      &                      mp, tdp, tcp, metalf, tip, type)
 
@@ -381,14 +382,11 @@ c    d     - density field
 c    te,ge - total energy and gas energy fields
 c    u,v,w - velocity fields
 c    metal - metallicity density field
-c    r     - refinement field (0 if zone is further refined)
 c    dt    - current timestep
 c    dx    - zone size (code units)
 c    t     - current time
-c    z     - current redshift
 c    d1,x1,v1,t1 - factors to convert d,dx,v,t to physical units
 c    nx,ny,nz - dimensions of field arrays
-c    ibuff    - number of buffer zones at each end of grid
 c    idual    - dual energy flag
 c    imetal   - metallicity flag (0 - none, 1 - yes)
 c    imethod  - hydro method (0 - PPMDE, 1 - PPMLR, 2 - ZEUS)
@@ -416,11 +414,11 @@ c-----------------------------------------------------------------------
 c
 c  Arguments
 c
-      INTG_PREC nx, ny, nz, ibuff, npart, idual, imetal, imethod,
+      INTG_PREC nx, ny, nz, npart, idual, imetal, imethod,
      &      iearly
       R_PREC    d(nx,ny,nz), te(nx,ny,nz)
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
-      R_PREC    r(nx,ny,nz), metal(nx,ny,nz), ge(nx,ny,nz)
+      R_PREC    metal(nx,ny,nz), ge(nx,ny,nz)
       R_PREC    dt, dx, z
       R_PREC    d1, x1, v1, t1, temp1, gamma
       R_PREC    tdelay, deltatemp, uvlum
