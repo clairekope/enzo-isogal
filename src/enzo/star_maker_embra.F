@@ -351,7 +351,7 @@ c=======================================================================
 c/////////////////////  SUBROUTINE STAR_FEEDBACK \\\\\\\\\\\\\\\\\\\\\\\
 c
       subroutine star_feedback_embra(nx, ny, nz,
-     &                      d, dm, te, ge, u, v, w, metal,
+     &                      d, te, ge, u, v, w, metal,
      &                      idual, imetal, imethod, dt, r, dx, t, z,
      &                      d1, x1, v1, t1, temp1, gamma,
      &                      sn_param, m_eject, yield,
@@ -378,7 +378,6 @@ c
 c  INPUTS:
 c
 c    d     - density field
-c    dm    - dark matter field
 c    te,ge - total energy and gas energy fields
 c    u,v,w - velocity fields
 c    metal - metallicity density field
@@ -419,7 +418,7 @@ c  Arguments
 c
       INTG_PREC nx, ny, nz, ibuff, npart, idual, imetal, imethod,
      &      iearly
-      R_PREC    d(nx,ny,nz), dm(nx,ny,nz), te(nx,ny,nz)
+      R_PREC    d(nx,ny,nz), te(nx,ny,nz)
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
       R_PREC    r(nx,ny,nz), metal(nx,ny,nz), ge(nx,ny,nz)
       R_PREC    dt, dx, z

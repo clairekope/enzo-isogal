@@ -349,19 +349,20 @@ extern "C" void FORTRAN_NAME(cluster_maker)
    int *type, int *ctype, float *justburn, int *iradtrans,
    int *imetalSNIa, float *metalSNIa, float *metalfSNIa);
 
-extern "C" void FORTRAN_NAME(star_feedback_embra)(int *nx, int *ny, int *nz,
-             float *d, float *dm, float *te, float *ge, float *u, float *v,
-             float *w, float *metal,
-             int *idual, int *imetal, hydro_method *imethod, float *dt,
-             float *r, float *dx, FLOAT *t, float *z,
-             float *d1, float *x1, float *v1, float *t1, float *temp1,
-             float *gamma, float *sn_param, float *m_eject, float *yield,
-             float *tdelay, float *deltatemp, int *iearly, float *uvlum,
-             int *nmax, FLOAT *xstart, FLOAT *ystart, FLOAT *zstart,
-             int *ibuff,
-             FLOAT *xp, FLOAT *yp, FLOAT *zp, float *up, float *vp, float *wp,
-             float *mp, float *tdp, float *tcp, float *metalf, float *tip,
-             int *type);
+extern "C" void FORTRAN_NAME(star_feedback_embra)
+  (int *nx, int *ny, int *nz,
+   float *d, float *te, float *ge,
+   float *u, float *v, float *w, float *metal,
+   int *idual, int *imetal, hydro_method *imethod, float *dt,
+   float *r, float *dx, FLOAT *t, float *z,
+   float *d1, float *x1, float *v1, float *t1, float *temp1,
+   float *gamma, float *sn_param, float *m_eject, float *yield,
+   float *tdelay, float *deltatemp, int *iearly, float *uvlum,
+   int *nmax, FLOAT *xstart, FLOAT *ystart, FLOAT *zstart,
+   int *ibuff,
+   FLOAT *xp, FLOAT *yp, FLOAT *zp, float *up, float *vp, float *wp,
+   float *mp, float *tdp, float *tcp, float *metalf, float *tip,
+   int *type);
 
 int sink_maker(int *nx, int *ny, int *nz, int *size,
              float *d, float *u, float *v, float *w,
@@ -1511,9 +1512,9 @@ int grid::StarParticleHandler(HierarchyEntry* SubgridPointer, int level,
  
       FORTRAN_NAME(star_feedback_embra)(
        GridDimension, GridDimension+1, GridDimension+2,
-       BaryonField[DensNum], dmfield,
-       BaryonField[TENum], BaryonField[GENum], BaryonField[Vel1Num],
-       BaryonField[Vel2Num], BaryonField[Vel3Num], MetalPointer,
+       BaryonField[DensNum], BaryonField[TENum], BaryonField[GENum],
+       BaryonField[Vel1Num], BaryonField[Vel2Num], BaryonField[Vel3Num],
+       MetalPointer,
        &DualEnergyFormalism, &MetallicityField, &HydroMethod,
        &dtFixed, BaryonField[NumberOfBaryonFields], &CellWidthTemp,
        &Time, &zred,
