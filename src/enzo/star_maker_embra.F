@@ -348,63 +348,60 @@ c
       end
 c
 c=======================================================================
-c///////////////////// SUBROUTINE STAR_FEEDBACK \\\\\\\\\\\\\\\\\\\\\\\\
+c////////////////// SUBROUTINE STAR_FEEDBACK_EMBRA \\\\\\\\\\\\\\\\\\\\\
 c
       subroutine star_feedback_embra(nx, ny, nz,
      &                      d, te, ge, u, v, w, metal,
      &                      idual, imetal, imethod,
      &                      dt, dx, t,
      &                      d1, x1, v1, t1, temp1, gamma,
-     &                      sn_param, m_eject, yield,
+     &                      m_eject, yield,
      &                      tdelay, deltatemp, iearly, uvlum,
      &                      npart, xstart, ystart, zstart,
      &                      xp, yp, zp, up, vp, wp,
      &                      mp, tdp, tcp, metalf, tip, type)
 
 c
-c  RELEASES "STAR" PARTICLE ENERGY, MASS AND METALS
+c  RELEASES STAR PARTICLE ENERGY, MASS AND METALS
 c
-c  written by: Chris Loken & Greg Bryan
-c  date:       3 March 1997
-c  modified1:  BWO
-c              13 Nov 2002
-c              Many changes have been made between the date of
-c              initial creation and today - all of them unlogged,
-c              unfortunately.  Bugs were fixed in calculation of 
-c              total energy and conservation of metal and gas density.
-c              The code has been cleaned up in general to enhance
-c              readability.  This is the stable version - star_maker1
-c              and star_maker3 should be used for experimentation.
+c  written by: Britton Smith
+c  date:       December 2014
 c
 c  INPUTS:
 c
-c    d     - density field
-c    te,ge - total energy and gas energy fields
-c    u,v,w - velocity fields
-c    metal - metallicity density field
-c    dt    - current timestep
-c    dx    - zone size (code units)
-c    t     - current time
-c    d1,x1,v1,t1 - factors to convert d,dx,v,t to physical units
 c    nx,ny,nz - dimensions of field arrays
+c    d        - density field
+c    te,ge    - total energy and gas energy fields
+c    u,v,w    - velocity fields
+c    metal    - metallicity density field
 c    idual    - dual energy flag
 c    imetal   - metallicity flag (0 - none, 1 - yes)
 c    imethod  - hydro method (0 - PPMDE, 1 - PPMLR, 2 - ZEUS)
-c
+c    dt       - current timestep
+c    dx       - zone size (code units)
+c    t        - current time (code units)
+c    d1,x1,v1,t1,temp1 - density, length, velocity, time, and
+c                        temperature units
+c    gamma    - adiabatic index
+c    m_eject  - fraction of stellar mass ejected back to gas
+c    yield    - fraction of stellar mass that is converted to metals
+c    tdelay   - time delay between star ignition and supernova feedback (in years)
+c    deltatemp - temperature change resulting from supernova feedback (in K)
+c    iearly   - flag to enable early stellar feedback
+c    uvlum    - uv luminosity from early stellar feedback (in erg/s/Msun)
+c    npart    - particle array size specified by calling routine
 c    x/y/z start - starting position of grid origin
 c    xp,yp,zp - positions of created particles
 c    up,vp,wp - velocities of created particles
-c    mp       - mass of new particles
+c    mp       - mass of particles
 c    tdp      - dynamical time of zone in which particle created
 c    tcp      - creation time of particle (-1 if not a star particle)
 c    metalf   - star particle metal fraction
-c    npart    - particle array size specified by calling routine
-c    sn_param - fraction of stellar rest mass that goes to feedback
-c    m_eject  - fraction of stellar mass ejected back to gas
-c    yield    - fraction of stellar mass that is converted to metals
+c    tip      - ignitino time of particles (when star turns on)
+c    type     - particle type
 c
 c  OUTPUTS:
-c    d,u,v,w,ge,e - modified field
+c    d,u,v,w,te,ge - modified fields
 c
 c
 c-----------------------------------------------------------------------
@@ -416,26 +413,24 @@ c  Arguments
 c
       INTG_PREC nx, ny, nz, npart, idual, imetal, imethod,
      &      iearly
-      R_PREC    d(nx,ny,nz), te(nx,ny,nz)
+      R_PREC    d(nx,ny,nz), te(nx,ny,nz), ge(nx,ny,nz)
       R_PREC    u(nx,ny,nz), v(nx,ny,nz), w(nx,ny,nz)
-      R_PREC    metal(nx,ny,nz), ge(nx,ny,nz)
+      R_PREC    metal(nx,ny,nz)
       R_PREC    dt, dx, z
       R_PREC    d1, x1, v1, t1, temp1, gamma
       R_PREC    tdelay, deltatemp, uvlum
-      P_PREC xstart, ystart, zstart, t
-      P_PREC xp(npart), yp(npart), zp(npart)
+      P_PREC    xstart, ystart, zstart, t
+      P_PREC    xp(npart), yp(npart), zp(npart)
       R_PREC    up(npart), vp(npart), wp(npart)
-      R_PREC    mp(npart), tdp(npart), tcp(npart), metalf(npart),
-     &     tip(npart)
+      R_PREC    mp(npart), tdp(npart), tcp(npart),
+     &     metalf(npart), tip(npart)
       INTG_PREC type(npart)
 c
 c  Locals
 c
       INTG_PREC i, j, k, n
-      R_PREC mform, tfactor, energy, sn_param,
-     &     m_eject, yield, minitial, dratio,
-     &     distmass, tdelaycode, snenergy, p_age, uv_dt,
-     &     en_early
+      R_PREC    m_eject, yield, dratio, distmass, tdelaycode, 
+     &     snenergy, p_age, uv_dt, en_early
       LOGIC_PREC tooyoung
 c-----------------------------------------------------------------------
 c
