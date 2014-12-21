@@ -364,6 +364,12 @@ c
 c
 c  RELEASES STAR PARTICLE ENERGY, MASS AND METALS
 c
+c  Embra particles release all supernova feedback in a single 
+c  burst resulting in a pre-defined change in temperature in 
+c  order to make the cooling time longer than the sound crossing 
+c  time.  Optionally, early stellar feedback injects additional 
+c  thermal energy to simulate uv radiation from massive stars.
+c
 c  written by: Britton Smith
 c  date:       December 2014
 c
