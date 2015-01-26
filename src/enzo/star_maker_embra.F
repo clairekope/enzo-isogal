@@ -293,6 +293,7 @@ c
                   mp(ii)  = newmassthisstar
                   tcp(ii) = t
                   tdp(ii) = tdyn
+                  tip(ii) = -1._RKIND
                   xp(ii) = xstart + (REAL(i,RKIND)-0.5_RKIND)*dx
                   yp(ii) = ystart + (REAL(j,RKIND)-0.5_RKIND)*dx
                   zp(ii) = zstart + (REAL(k,RKIND)-0.5_RKIND)*dx
