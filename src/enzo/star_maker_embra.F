@@ -219,7 +219,7 @@ c
 c
 c              5) Check if a star already exists at this location.
 c
-               if (starid(i,j,k) .gt. 0) then
+               if (starid(i,j,k) .gt. -1) then
                   n = starid(i,j,k)
 c
 c                 Calculate how much mass to add to un-ignited star.
