@@ -468,7 +468,7 @@ c
 c
 c           Check if SN feedback will occur this timestep.
 c
-            if (p_age + dt .lt. tip(n)) then
+            if (p_age + dt .lt. tdelaycode) then
                tooyoung = .true.
             else
                tooyoung = .false.
