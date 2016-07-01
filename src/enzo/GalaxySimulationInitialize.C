@@ -58,6 +58,18 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   char *Vel2Name    = "y-velocity";
   char *Vel3Name    = "z-velocity";
   char *CRName      = "CREnergyDensity";
+  char *ElectronName = "Electron_Density";
+  char *HIName    = "HI_Density";
+  char *HIIName   = "HII_Density";
+  char *HeIName   = "HeI_Density";
+  char *HeIIName  = "HeII_Density";
+  char *HeIIIName = "HeIII_Density";
+  char *HMName    = "HM_Density";
+  char *H2IName   = "H2I_Density";
+  char *H2IIName  = "H2II_Density";
+  char *DIName    = "DI_Density";
+  char *DIIName   = "DII_Density";
+  char *HDIName   = "HDI_Density";
   char *MetalName   = "Metal_Density";
   char *MetalIaName = "MetalSNIa_Density";
 
@@ -382,6 +394,24 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
    DataLabel[count++] = Vel3Name;
  if(CRModel)
    DataLabel[count++] = CRName;
+ if (MultiSpecies) {
+   DataLabel[count++] = ElectronName;
+   DataLabel[count++] = HIName;
+   DataLabel[count++] = HIIName;
+   DataLabel[count++] = HeIName;
+   DataLabel[count++] = HeIIName;
+   DataLabel[count++] = HeIIIName;
+   if (MultiSpecies > 1) {
+     DataLabel[count++] = HMName;
+     DataLabel[count++] = H2IName;
+     DataLabel[count++] = H2IIName;
+   }
+   if (MultiSpecies > 2) {
+     DataLabel[count++] = DIName;
+     DataLabel[count++] = DIIName;
+     DataLabel[count++] = HDIName;
+   }
+ }
  if (GalaxySimulationUseMetallicityField)
    DataLabel[count++] = MetalName;
  if (StarMakerTypeIaSNe)

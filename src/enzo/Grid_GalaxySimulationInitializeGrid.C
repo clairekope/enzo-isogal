@@ -218,22 +218,32 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
    if (BaryonField[field] == NULL)
      BaryonField[field] = new float[size];
 
- /* set metals to small value */
+ /* I'm commenting this out because you the metal field should
+    be set during grid initialization rather than just setting
+    it as a constant color field. -- DWS */
+ // /* set metals to small value */
 
-  if (UseMetallicityField)
-    for (i = 0; i < size; i++)
-      BaryonField[MetalNum][i] = 1.0e-10;
-
+ //  if (UseMetallicityField)
+ //    for (i = 0; i < size; i++)
+ //      BaryonField[MetalNum][i] = 1.0e-10;
+ 
  /* Loop over the mesh. */
 
  float density, dens1, Velocity[MAX_DIMENSION];
- FLOAT temperature, temp1, init_temp;
+ FLOAT temperature, temp1, init_temp, initial_metallicity;
  FLOAT r, x, y = 0, z = 0;
  int n = 0;
 
  for (k = 0; k < GridDimension[2]; k++)
    for (j = 0; j < GridDimension[1]; j++)
      for (i = 0; i < GridDimension[0]; i++, n++) {
+
+        if (UseMetallicityField) {
+	  /* Set a background metallicity value that will scale with density.
+	     If the cell is in the disk, this will be increased by a factor
+	     of 100.  This should really be a parameter that is read in -- DWS */ 
+	  initial_metallicity = 1.0e-5;
+	}
 
 	/* Compute position */
 
@@ -385,8 +395,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	    temperature = temp1;
 	    if( temperature > 1.0e7 )
 	      temperature = init_temp;
-	    if( UseMetallicityField ) // This should be converted to a general color field at some point - this obviously breaks metallicity feature
-	      BaryonField[MetalNum][n] = density;
+	    if( UseMetallicityField ) // Here we're setting the disk to be 100x more enriched -- DWS
+	      initial_metallicity *= 1e2;
 	  }
 
 	} // end: if (r < DiskRadius)
@@ -394,7 +404,15 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	/* Set density. */
 
 	BaryonField[0][n] = density;
-	
+
+	if (UseMetallicityField) {
+	  BaryonField[MetalNum][n] = initial_metallicity * CoolData.SolarMetalFractionByMass * density;
+	}
+
+	/* This is wrong as it sets every cell for ever iteration of the loop.
+	   it should be using index "n" and not include the for loop.
+	   It should probably also be scaled with density in some way to be
+	   a proper metallicity -- DWS */
 	if (StarMakerTypeIaSNe)
 	  for (i = 0; i < size; i++)
 	    BaryonField[MetalIaNum][i] = 1.0e-10;
@@ -423,7 +441,65 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
      if( CRModel )
        BaryonField[CRNum][n] = BaryonField[DensNum][n] * GalaxySimulationCR;
 
+     // Set multispecies fields!
+     // this attempts to set them such that species conservation is maintained,
+     // using the method in CosmologySimulationInitializeGrid.C
+     if(MultiSpecies){
+       
+       BaryonField[HINum][n] = TestProblemData.HI_Fraction * 
+	 TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
+       
+       BaryonField[HeINum][n] =  TestProblemData.HeI_Fraction *
+	 BaryonField[0][n] * (1.0-TestProblemData.HydrogenFractionByMass);
+       
+       BaryonField[HeIINum][n] = TestProblemData.HeII_Fraction *
+	 BaryonField[0][n] * (1.0-TestProblemData.HydrogenFractionByMass);
+       
+       BaryonField[HeIIINum][n] =
+	 (1.0 - TestProblemData.HydrogenFractionByMass) * BaryonField[0][n] -
+	 BaryonField[HeINum][n] - BaryonField[HeIINum][n];
 
+       if(MultiSpecies > 1){
+	 BaryonField[HMNum][n] = TestProblemData.HM_Fraction *
+	   TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
+	 
+	 BaryonField[H2INum][n] = 2 * TestProblemData.H2I_Fraction *
+	   TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
+	 
+	 BaryonField[H2IINum][n] = 2 * TestProblemData.H2II_Fraction * 
+	   TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
+       }
+
+       // HII density is calculated by subtracting off the various ionized fractions
+       // from the total
+       BaryonField[HIINum][n] = TestProblemData.HydrogenFractionByMass * BaryonField[0][n]
+	 - BaryonField[HINum][n];
+       if (MultiSpecies > 1)
+	 BaryonField[HIINum][n] -= (BaryonField[HMNum][n] + BaryonField[H2IINum][n]
+				    + BaryonField[H2INum][n]);
+       
+       // Electron "density" (remember, this is a factor of m_p/m_e scaled from the 'normal'
+       // density for convenience) is calculated by summing up all of the ionized species.
+       // The factors of 0.25 and 0.5 in front of HeII and HeIII are to fix the fact that we're
+       // calculating mass density, not number density (because the BaryonField values are 4x as
+       // heavy for helium for a single electron)
+       BaryonField[DeNum][n] = BaryonField[HIINum][n] +
+	 0.25*BaryonField[HeIINum][n] + 0.5*BaryonField[HeIIINum][n];
+       if (MultiSpecies > 1)
+	 BaryonField[DeNum][n] += 0.5*BaryonField[H2IINum][n] -
+	   BaryonField[HMNum][n];
+       
+       BaryonField[DeNum][n] = max(BaryonField[DeNum][n], tiny_number);
+       
+       // Set deuterium species (assumed to be a negligible fraction of the total, so not
+       // counted in the conservation)
+       if(MultiSpecies > 2){
+	 BaryonField[DINum ][n]  = TestProblemData.DeuteriumToHydrogenRatio * BaryonField[HINum][n];
+	 BaryonField[DIINum][n] = TestProblemData.DeuteriumToHydrogenRatio * BaryonField[HIINum][n];
+	 BaryonField[HDINum][n] = 0.75 * TestProblemData.DeuteriumToHydrogenRatio * BaryonField[H2INum][n];
+       }
+
+     } // if(MultiSpecies)
 
      } // end loop over grid
 
