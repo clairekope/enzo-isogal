@@ -195,13 +195,19 @@ c
                tdyn  = sqrt(3._RKIND*pi/32._RKIND/G/dtot)/t1
                coldenough = 0
                if (thermalcrit .eq. 1) then
-                   if (tdyn .gt. cooltime(i,j,k) .and.
-     &                 temp(i,j,k) .lt. 1.1e4_RKIND) then
-                      coldenough = 1
-                   endif
+c                   if (tdyn .gt. cooltime(i,j,k)) coldenough = 1
+c                   if (tdyn .gt. cooltime(i,j,k) .and.
+c     &                 temp(i,j,k) .lt. 1.1e4_RKIND) then
+c                      coldenough = 1
+c                   endif
+c               endif 
+c               if (temp(i,j,k) .lt. tempthresh) coldenough = 1
+                  if (tdyn .gt. cooltime(i,j,k) .or.
+     &                temp(i,j,k) .lt. tempthresh) then
+                     coldenough = 1
+                  endif
+                  if (coldenough .eq. 0) goto 10
                endif
-               if (temp(i,j,k) .lt. tempthresh) coldenough = 1
-               if (coldenough .eq. 0) goto 10
 c
 c              6) is M > M_Jeans? (this definition involves only baryons under
 c                 the assumption that the dark matter is stable, which

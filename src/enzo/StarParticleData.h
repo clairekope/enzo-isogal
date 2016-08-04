@@ -135,4 +135,12 @@ SPEXTERN float minStarLifetime;
 SPEXTERN FLOAT LastSupernovaTime;
 SPEXTERN float *IMFData;
 
+SPEXTERN int   StarMakerVelDivCrit;
+SPEXTERN int   StarMakerSelfBoundCrit;
+SPEXTERN int   StarMakerThermalCrit;
+SPEXTERN int   StarMakerJeansMassCrit;
+SPEXTERN int   StarMakerH2Crit;
+SPEXTERN int   StarMakerStochasticStarFormation;
+SPEXTERN float StarMakerTemperatureThreshold;
+
 #endif
