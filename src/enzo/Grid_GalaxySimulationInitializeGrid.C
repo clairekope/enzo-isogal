@@ -241,8 +241,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
         if (UseMetallicityField) {
 	  /* Set a background metallicity value that will scale with density.
 	     If the cell is in the disk, this will be increased by a factor
-	     of 100.  This should really be a parameter that is read in -- DWS */ 
-	  initial_metallicity = 1.0e-5;
+	     of 3.  This should really be a parameter that is read in -- DWS */ 
+	  initial_metallicity = 0.1;
 	}
 
 	/* Compute position */
@@ -395,8 +395,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	    temperature = temp1;
 	    if( temperature > 1.0e7 )
 	      temperature = init_temp;
-	    if( UseMetallicityField ) // Here we're setting the disk to be 100x more enriched -- DWS
-	      initial_metallicity *= 1e2;
+	    if( UseMetallicityField ) // Here we're setting the disk to be 3x more enriched -- DWS
+	      initial_metallicity *= 3.0;
 	  }
 
 	} // end: if (r < DiskRadius)
