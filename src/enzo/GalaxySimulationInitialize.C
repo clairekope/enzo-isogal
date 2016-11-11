@@ -38,6 +38,7 @@
 #include "TopGridData.h"
 
 void MHDCTSetupFieldLabels();
+float GetMagneticUnits(float DensityUnits, float LengthUnits, float TimeUnits);
 void WriteListOfFloats(FILE *fptr, int N, float floats[]);
 void WriteListOfFloats(FILE *fptr, int N, FLOAT floats[]);
 void AddLevel(LevelHierarchyEntry *Array[], HierarchyEntry *Grid, int level);
@@ -122,7 +123,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
  
   FLOAT LeftEdge[MAX_DIMENSION], RightEdge[MAX_DIMENSION];
   float GalaxySimulationInitialBfield[3] = {0.0, 0.0, 0.0};
-  int GalaxySimulationInitialBfieldTopology= 0; //Uniform cartesian.  So far only one option.
+  int GalaxySimulationInitialBfieldTopology= 0; //Uniform cartesian
 
   /* Default Values */
 
@@ -230,6 +231,12 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
                &VelocityUnits, &MassUnits, MetaData.Time) == FAIL){
     fprintf(stderr, "Error in GetUnits.\n");
     return FAIL;
+  }
+  if( UseMHD ){
+      float MagneticUnits = GetMagneticUnits(DensityUnits, LengthUnits, TimeUnits);
+      for( dim=0; dim<3; dim++ ){
+          GalaxySimulationInitialBfield[dim] /=MagneticUnits;
+      }
   }
   GalaxySimulationRPSWindDensity = GalaxySimulationRPSWindDensity/DensityUnits;
   GalaxySimulationRPSWindPressure = GalaxySimulationRPSWindPressure/DensityUnits/LengthUnits/LengthUnits*TimeUnits*TimeUnits;
@@ -341,6 +348,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 
     /* Loop back from the bottom, restoring the consistency among levels. */
 
+    MHD_ProjectE=FALSE;
+    MHD_ProjectB=TRUE;
     for (level = MaximumRefinementLevel; level > 0; level--) {
       LevelHierarchyEntry *Temp = LevelArray[level];
       while (Temp != NULL) {
@@ -352,6 +361,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 	Temp = Temp->NextGridThisLevel;
       }
     }
+    MHD_ProjectE=TRUE;
+    MHD_ProjectB=FALSE;
 
   } // end: if (GalaxySimulationRefineAtStart)
 

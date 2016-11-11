@@ -79,3 +79,10 @@ int GetUnits(float *DensityUnits, float *LengthUnits,
     }
   return SUCCESS;
 }
+float GetMagneticUnits(float DensityUnits, float LengthUnits, float TimeUnits)
+{
+    //From the energy equation, Gauss^2 = erg^2/cm^3
+    float MagneticUnits = sqrt(DensityUnits)*LengthUnits/TimeUnits; //Gauss
+    MagneticUnits *=  sqrt(4*pi);
+    return MagneticUnits;
+}

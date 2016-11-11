@@ -60,6 +60,12 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth,FLOAT z,FLOAT density,FLOAT 
 double trapzd(double (func)(), double a, double b, int n);
 double qromb(double (*func)(double), double a, double b);
 void polint(double xa[],double ya[],int n,double x,double *y,double *dy);
+double func1(double zint);
+double func2(double zint);
+double func3(double zint);
+double func4(double zint);
+double *vector(int nl,int nh);
+void free_vector(double *v,int nl,int nh);
 static double drcyl;
 static double r2;
 
@@ -221,32 +227,22 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 
   this->AllocateGrids();
 
- /* I'm commenting this out because you the metal field should
-    be set during grid initialization rather than just setting
-    it as a constant color field. -- DWS */
- // /* set metals to small value */
+ /* set metals to small value */
 
- //  if (UseMetallicityField)
- //    for (i = 0; i < size; i++)
- //      BaryonField[MetalNum][i] = 1.0e-10;
- 
+  if (UseMetallicityField)
+    for (i = 0; i < size; i++)
+      BaryonField[MetalNum][i] = 1.0e-10;
+
  /* Loop over the mesh. */
 
  float density, dens1, Velocity[MAX_DIMENSION];
- FLOAT temperature, temp1, init_temp, initial_metallicity;
+ FLOAT temperature, temp1, init_temp;
  FLOAT r, x, y = 0, z = 0;
  int n = 0;
 
  for (k = 0; k < GridDimension[2]; k++)
    for (j = 0; j < GridDimension[1]; j++)
      for (i = 0; i < GridDimension[0]; i++, n++) {
-
-        if (UseMetallicityField) {
-	  /* Set a background metallicity value that will scale with density.
-	     If the cell is in the disk, this will be increased by a factor
-	     of 3.  This should really be a parameter that is read in -- DWS */ 
-	  initial_metallicity = 0.1;
-	}
 
 	/* Compute position */
 
@@ -398,8 +394,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	    temperature = temp1;
 	    if( temperature > 1.0e7 )
 	      temperature = init_temp;
-	    if( UseMetallicityField ) // Here we're setting the disk to be 3x more enriched -- DWS
-	      initial_metallicity *= 3.0;
+	    if( UseMetallicityField ) // This should be converted to a general color field at some point - this obviously breaks metallicity feature
+	      BaryonField[MetalNum][n] = density;
 	  }
 
 	} // end: if (r < DiskRadius)
@@ -407,15 +403,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	/* Set density. */
 
 	BaryonField[0][n] = density;
-
-	if (UseMetallicityField) {
-	  BaryonField[MetalNum][n] = initial_metallicity * CoolData.SolarMetalFractionByMass * density;
-	}
-
-	/* This is wrong as it sets every cell for ever iteration of the loop.
-	   it should be using index "n" and not include the for loop.
-	   It should probably also be scaled with density in some way to be
-	   a proper metallicity -- DWS */
+	
 	if (StarMakerTypeIaSNe)
 	  for (i = 0; i < size; i++)
 	    BaryonField[MetalIaNum][i] = 1.0e-10;
@@ -445,9 +433,10 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
       switch ( GalaxySimulationInitialBfieldTopology ){
           case 0: //uniform
           for (dim = 0; dim < GridRank; dim++) {
+              if( UseMHDCT ){
+                  MagneticField[dim][n] = GalaxySimulationInitialBfield[dim];
+              }
               BaryonField[B1Num+dim][n] = GalaxySimulationInitialBfield[dim];
-              if( UseMHDCT)
-              MagneticField[dim][n] = GalaxySimulationInitialBfield[dim];
           }
           break;
           default:
@@ -461,65 +450,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
      if( CRModel )
        BaryonField[CRNum][n] = BaryonField[DensNum][n] * GalaxySimulationCR;
 
-     // Set multispecies fields!
-     // this attempts to set them such that species conservation is maintained,
-     // using the method in CosmologySimulationInitializeGrid.C
-     if(MultiSpecies){
-       
-       BaryonField[HINum][n] = TestProblemData.HI_Fraction * 
-	 TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
-       
-       BaryonField[HeINum][n] =  TestProblemData.HeI_Fraction *
-	 BaryonField[0][n] * (1.0-TestProblemData.HydrogenFractionByMass);
-       
-       BaryonField[HeIINum][n] = TestProblemData.HeII_Fraction *
-	 BaryonField[0][n] * (1.0-TestProblemData.HydrogenFractionByMass);
-       
-       BaryonField[HeIIINum][n] =
-	 (1.0 - TestProblemData.HydrogenFractionByMass) * BaryonField[0][n] -
-	 BaryonField[HeINum][n] - BaryonField[HeIINum][n];
 
-       if(MultiSpecies > 1){
-	 BaryonField[HMNum][n] = TestProblemData.HM_Fraction *
-	   TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
-	 
-	 BaryonField[H2INum][n] = 2 * TestProblemData.H2I_Fraction *
-	   TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
-	 
-	 BaryonField[H2IINum][n] = 2 * TestProblemData.H2II_Fraction * 
-	   TestProblemData.HydrogenFractionByMass * BaryonField[0][n];
-       }
-
-       // HII density is calculated by subtracting off the various ionized fractions
-       // from the total
-       BaryonField[HIINum][n] = TestProblemData.HydrogenFractionByMass * BaryonField[0][n]
-	 - BaryonField[HINum][n];
-       if (MultiSpecies > 1)
-	 BaryonField[HIINum][n] -= (BaryonField[HMNum][n] + BaryonField[H2IINum][n]
-				    + BaryonField[H2INum][n]);
-       
-       // Electron "density" (remember, this is a factor of m_p/m_e scaled from the 'normal'
-       // density for convenience) is calculated by summing up all of the ionized species.
-       // The factors of 0.25 and 0.5 in front of HeII and HeIII are to fix the fact that we're
-       // calculating mass density, not number density (because the BaryonField values are 4x as
-       // heavy for helium for a single electron)
-       BaryonField[DeNum][n] = BaryonField[HIINum][n] +
-	 0.25*BaryonField[HeIINum][n] + 0.5*BaryonField[HeIIINum][n];
-       if (MultiSpecies > 1)
-	 BaryonField[DeNum][n] += 0.5*BaryonField[H2IINum][n] -
-	   BaryonField[HMNum][n];
-       
-       BaryonField[DeNum][n] = max(BaryonField[DeNum][n], tiny_number);
-       
-       // Set deuterium species (assumed to be a negligible fraction of the total, so not
-       // counted in the conservation)
-       if(MultiSpecies > 2){
-	 BaryonField[DINum ][n]  = TestProblemData.DeuteriumToHydrogenRatio * BaryonField[HINum][n];
-	 BaryonField[DIINum][n] = TestProblemData.DeuteriumToHydrogenRatio * BaryonField[HIINum][n];
-	 BaryonField[HDINum][n] = 0.75 * TestProblemData.DeuteriumToHydrogenRatio * BaryonField[H2INum][n];
-       }
-
-     } // if(MultiSpecies)
 
      } // end loop over grid
 
@@ -714,7 +645,7 @@ float DiskPotentialGasDensity(FLOAT r,FLOAT z){
  * 	Returns: density (in grams/cm^3)
  *
  */
-	double density = MgasScale*SolarMass/(8.0*pi*POW(gScaleHeightR*Mpc,2)*gScaleHeightz*Mpc);
+	double density = MgasScale*SolarMass/(8.0*pi*pow(gScaleHeightR*Mpc,2)*gScaleHeightz*Mpc);
 	density /= (cosh(r*LengthUnits/gScaleHeightR/Mpc)*cosh(z*LengthUnits/gScaleHeightz/Mpc));
 
 	if(fabs(r*LengthUnits/Mpc) > SmoothRadius && fabs(r*LengthUnits/Mpc) <= TruncRadius)
@@ -738,7 +669,7 @@ float HaloGasDensity(FLOAT R){
 		double T0,haloDensity;
 		T0 = HaloGasTemperature(GalaxySimulationGasHaloScaleRadius*Mpc/LengthUnits);
 		haloDensity = GalaxySimulationGasHaloDensity*(T0/HaloGasTemperature(R));
-		haloDensity /= POW((R*LengthUnits/GalaxySimulationGasHaloScaleRadius/Mpc),3);
+		haloDensity /= pow((R*LengthUnits/GalaxySimulationGasHaloScaleRadius/Mpc),3);
 		return min(haloDensity,GalaxySimulationGasHaloDensity);
 	}
 	return densicm;
@@ -805,14 +736,12 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth, FLOAT z, FLOAT density,
   double PbulgeComp2(double zint);       // same but for r2 (3D distance)
   double PstellarComp1(double zint);     // (density times stellar disk force)
   double PstellarComp2(double zint);     // same but for r2 (3D distance plane)
-  double PDMComp1(double zint);          // (density times dark matter halo force)
-  double PDMComp2(double zint);          // same but for r2 (3D distance plane)
 
   double Pressure,Pressure2,zicm,zicm2,zicmf=0.0,zsmall=0.0,
     zicm2f=0.0,zint,FdPdR,FtotR,denuse,rsph,vrot,bulgeComp,rsph_icm;
 
   r2 = (drcyl+0.01*cellwidth)*LengthUnits;  // in plane radius
-  rsph = sqrt(POW(drcyl*LengthUnits,2)+POW(z,2)); // 3D radius
+  rsph = sqrt(pow(drcyl*LengthUnits,2)+pow(z,2)); // 3D radius
 
   /*	Determine zicm: the height above the disk where rho -> rho_ICM,
    *	use this to find P_icm and dP_icm  */
@@ -829,13 +758,11 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth, FLOAT z, FLOAT density,
 
       bulgeComp = (DiskGravityStellarBulgeMass == 0.0 ? 
 		   0.0 : qromb(PbulgeComp1, fabs(zicm), fabs(z)));
-      Pressure  = bulgeComp + qromb(PstellarComp1, fabs(zicm), fabs(z));
-      Pressure += qromb(PDMComp1, fabs(zicm), fabs(z));
+      Pressure= bulgeComp + qromb(PstellarComp1, fabs(zicm), fabs(z));
 
       bulgeComp = (DiskGravityStellarBulgeMass == 0.0 ? 
 		   0.0 : qromb(PbulgeComp2, fabs(zicm2), fabs(z)));
-      Pressure2  = bulgeComp + qromb(PstellarComp2, fabs(zicm2), fabs(z));
-      Pressure2 += qromb(PDMComp2, fabs(zicm2), fabs(z));
+      Pressure2= bulgeComp + qromb(PstellarComp2, fabs(zicm2), fabs(z));
 
     }  // end |z| < |zicm| if
 
@@ -860,13 +787,13 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth, FLOAT z, FLOAT density,
 	      
 	bulgeComp = (DiskGravityStellarBulgeMass == 0.0 ?
 		     0.0 : qromb(PbulgeComp1, fabs(zicm), fabs(z)));
-	Pressure  = (bulgeComp + qromb(PDMComp1, fabs(zicm), fabs(z)) + qromb(PstellarComp1, fabs(zicm), fabs(z)))
+	Pressure  = (bulgeComp + qromb(PstellarComp1, fabs(zicm), fabs(z)))
 	  *(0.5*(1.0+cos(pi*(drcyl*LengthUnits-SmoothRadius*Mpc)/
 			 (SmoothLength*Mpc))));
 
 	bulgeComp = (DiskGravityStellarBulgeMass == 0.0 ?
 		     0.0 : qromb(PbulgeComp2, fabs(zicm2), fabs(z)));
-	Pressure2 = (bulgeComp + qromb(PDMComp2, fabs(zicm2), fabs(z)) + qromb(PstellarComp2, fabs(zicm2), fabs(z)))
+	Pressure2 = (bulgeComp + qromb(PstellarComp2, fabs(zicm2), fabs(z)))
 	  *(0.5*(1.0+cos(pi*(r2-SmoothRadius*Mpc)/(SmoothLength*Mpc))));
 
       } // end |z| < |zicm| if
@@ -898,7 +825,7 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth, FLOAT z, FLOAT density,
   if (denuse < HaloGasDensity(rsph)) {
     fprintf(stderr,"denuse small:  %"FSYM"\n", denuse);
   }
-  rsph_icm = sqrt(drcyl*drcyl+POW(zicm/LengthUnits,2));
+  rsph_icm = sqrt(drcyl*drcyl+pow(zicm/LengthUnits,2));
   Picm = HaloGasDensity(rsph_icm)*kboltz*HaloGasTemperature(rsph_icm)/(0.6*mh);
   temperature=0.6*mh*(Picm+Pressure)/(kboltz*denuse);
 
@@ -909,21 +836,21 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth, FLOAT z, FLOAT density,
   /* Calculate Gravity = Fg_DM + Fg_StellarDisk + Fg_StellaDiskGravityStellarBulgeR */
   
   FtotR  = (-pi)*GravConst*DiskGravityDarkMatterDensity*
-          POW(DiskGravityDarkMatterR*Mpc,3)/POW(rsph,3)*drcyl*LengthUnits
+          pow(DiskGravityDarkMatterR*Mpc,3)/pow(rsph,3)*drcyl*LengthUnits
 	  *(-2.0*atan(rsph/DiskGravityDarkMatterR/Mpc) + 
 	    2.0*log(1.0+rsph/DiskGravityDarkMatterR/Mpc) +
-	    log(1.0+POW(rsph/DiskGravityDarkMatterR/Mpc,2)));
+	    log(1.0+pow(rsph/DiskGravityDarkMatterR/Mpc,2)));
   FtotR += -GravConst*DiskGravityStellarDiskMass*SolarMass*drcyl*LengthUnits
-	  /sqrt(POW(POW(drcyl*LengthUnits,2) + 
-		    POW(DiskGravityStellarDiskScaleHeightR*Mpc +
-			sqrt(POW(z,2) + 
-			     POW(DiskGravityStellarDiskScaleHeightz*Mpc,2)),
+	  /sqrt(pow(pow(drcyl*LengthUnits,2) + 
+		    pow(DiskGravityStellarDiskScaleHeightR*Mpc +
+			sqrt(pow(z,2) + 
+			     pow(DiskGravityStellarDiskScaleHeightz*Mpc,2)),
 			2),
 		    3));
   FtotR += -GravConst*DiskGravityStellarBulgeMass*SolarMass
-           /POW(sqrt(POW(z,2) + POW(drcyl*LengthUnits,2)) + 
+           /pow(sqrt(pow(z,2) + pow(drcyl*LengthUnits,2)) + 
 	        DiskGravityStellarBulgeR*Mpc,2)*drcyl*LengthUnits/
-           sqrt(POW(z,2) +POW(drcyl*LengthUnits,2));
+           sqrt(pow(z,2) +pow(drcyl*LengthUnits,2));
 
   /* Some error checking. */
 
@@ -959,9 +886,9 @@ double PbulgeComp_general(double rvalue, double zint)
 	  (2*pi*POW(gScaleHeightR*Mpc,2)*gScaleHeightz*Mpc)*0.25/
 	  cosh(rvalue/gScaleHeightR/Mpc) / cosh(fabs(zint)/gScaleHeightz/Mpc)*
 	  GravConst*DiskGravityStellarBulgeMass*SolarMass/
-	  POW((sqrt(POW(zint,2) + POW(rvalue,2)) + 
+	  POW((sqrt(pow(zint,2) + pow(rvalue,2)) + 
 	       DiskGravityStellarBulgeR*Mpc),2)*fabs(zint)/
-	  sqrt(POW(zint,2)+POW(rvalue,2)));
+	  sqrt(pow(zint,2)+pow(rvalue,2)));
 }
 
 // Stellar Bulge functions
@@ -981,19 +908,19 @@ double PbulgeComp2(double zint)
 double PstellarComp_general(double rvalue, double zint)
 {
   return (-MgasScale*SolarMass/
-	  (2*pi*POW(gScaleHeightR*Mpc,2)*gScaleHeightz*Mpc)*0.25/
+	  (2*pi*pow(gScaleHeightR*Mpc,2)*gScaleHeightz*Mpc)*0.25/
 	  cosh(rvalue/gScaleHeightR/Mpc) / cosh(fabs(zint)/gScaleHeightz/Mpc)*
 	  GravConst*DiskGravityStellarDiskMass*SolarMass*
 	  (DiskGravityStellarDiskScaleHeightR*Mpc + 
-	   sqrt(POW(zint,2) + POW(DiskGravityStellarDiskScaleHeightz*Mpc,2)))*
+	   sqrt(pow(zint,2) + pow(DiskGravityStellarDiskScaleHeightz*Mpc,2)))*
 	  fabs(zint)/
-	  sqrt(POW(POW(rvalue,2) + 
-		   POW((DiskGravityStellarDiskScaleHeightR*Mpc + 
-			sqrt(POW(zint,2) + 
-			     POW(DiskGravityStellarDiskScaleHeightz*Mpc,2)))
+	  sqrt(pow(pow(rvalue,2) + 
+		   pow((DiskGravityStellarDiskScaleHeightR*Mpc + 
+			sqrt(pow(zint,2) + 
+			     pow(DiskGravityStellarDiskScaleHeightz*Mpc,2)))
 		       ,2)
 		   ,3))/
-	  sqrt(POW(zint,2)+POW(DiskGravityStellarDiskScaleHeightz*Mpc,2)));
+	  sqrt(pow(zint,2)+pow(DiskGravityStellarDiskScaleHeightz*Mpc,2)));
 }
 
 // Stellar Disk functions
@@ -1008,48 +935,6 @@ double PstellarComp2(double zint)
 {
   extern double r2;
   return PstellarComp_general(r2, zint);
-}
-
-double PDMComp_general(double rvalue, double zint){
-/* --------------------------------------------------------
- * PDMComp_general
- * --------------------------------------------------------
- * General function for computing the DM contribution to
- * local (vertical) pressure on the gas in the galaxy's disk.
- * This returns the gas density at a given position
- * times the force on the gas due to the dark matter
- * --------------------------------------------------------- */
-
-  float gas_density;
-  float F;             // dark matter force
-  float rsph; // 3D, spherical radius
-
-
-  /* compute gas density */
-  gas_density  = MgasScale*SolarMass / (8.0 * pi * POW(gScaleHeightR*Mpc,2)*gScaleHeightz*Mpc);
-  gas_density /= (cosh(rvalue/gScaleHeightR/Mpc)*cosh(fabs(zint)/gScaleHeightz/Mpc));
-
-  rsph = sqrt(rvalue*rvalue + zint*zint);
-
-  /* fabs(zint) is because this is the force in the direction downward */
-  F    = (-pi)*GravConst*DiskGravityDarkMatterDensity*
-             POW(DiskGravityDarkMatterR*Mpc,3)/POW(rsph,3) * fabs(zint)
-            *(-2.0*atan(rsph/DiskGravityDarkMatterR/Mpc) + 
-            2.0*log(1.0+rsph/DiskGravityDarkMatterR/Mpc) +
-            log(1.0+POW(rsph/DiskGravityDarkMatterR/Mpc,2)));
-
-  return gas_density * F;
-}
-
-/* DM pressure integration */
-double PDMComp1(double zint){
-  extern double drcyl;
-  return PDMComp_general(drcyl*LengthUnits, zint);
-}
-
-double PDMComp2(double zint){
-  extern double r2;
-  return PDMComp_general(r2, zint);
 }
 
 // Will be called by qromb to find the pressure at every point in disk.
