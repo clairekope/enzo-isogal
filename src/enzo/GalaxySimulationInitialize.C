@@ -37,6 +37,7 @@
 #include "LevelHierarchy.h"
 #include "TopGridData.h"
 
+void MHDCTSetupFieldLabels();
 void WriteListOfFloats(FILE *fptr, int N, float floats[]);
 void WriteListOfFloats(FILE *fptr, int N, FLOAT floats[]);
 void AddLevel(LevelHierarchyEntry *Array[], HierarchyEntry *Grid, int level);
@@ -72,6 +73,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   char *HDIName   = "HDI_Density";
   char *MetalName   = "Metal_Density";
   char *MetalIaName = "MetalSNIa_Density";
+  char *BxName      = "Bx";
+  char *ByName      = "By";
+  char *BzName      = "Bz";
+  char *PhiName     = "Phi";
 
   /* declarations */
 
@@ -116,7 +121,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
     GalaxySimulationUseMetallicityField;
  
   FLOAT LeftEdge[MAX_DIMENSION], RightEdge[MAX_DIMENSION];
-  float ZeroBField[3] = {0.0, 0.0, 0.0};
+  float GalaxySimulationInitialBfield[3] = {0.0, 0.0, 0.0};
+  int GalaxySimulationInitialBfieldTopology= 0; //Uniform cartesian.  So far only one option.
 
   /* Default Values */
 
@@ -203,6 +209,12 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationAngularMomentum[0],
 		  &GalaxySimulationAngularMomentum[1],
 		  &GalaxySimulationAngularMomentum[2]);
+    ret += sscanf(line, "GalaxySimulationInitialBfield = %"FSYM" %"FSYM" %"FSYM, 
+      &GalaxySimulationInitialBfield[0],
+      &GalaxySimulationInitialBfield[1],
+      &GalaxySimulationInitialBfield[2]);
+    ret += sscanf(line, "GalaxySimulationInitialBfieldTopology = %"ISYM,
+      &GalaxySimulationInitialBfieldTopology);
     
     /* if the line is suspicious, issue a warning */
     if (ret == 0 && strstr(line, "=") && strstr(line, "GalaxySimulation") 
@@ -254,7 +266,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 						       GalaxySimulationUseMetallicityField,
 						       GalaxySimulationInflowTime,
 						       GalaxySimulationInflowDensity,0,
-						       GalaxySimulationCR )
+                   GalaxySimulationInitialBfield,
+                   GalaxySimulationInitialBfieldTopology,
+                   GalaxySimulationCR
+                   )
 	      == FAIL) {
       ENZO_FAIL("Error in GalaxySimulationInitialize[Sub]Grid.");
   }// end subgrid if
@@ -312,7 +327,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 						       GalaxySimulationUseMetallicityField,
 						       GalaxySimulationInflowTime,
 						       GalaxySimulationInflowDensity,level,
-						       GalaxySimulationCR )
+                            GalaxySimulationInitialBfield,
+                            GalaxySimulationInitialBfieldTopology,
+                            GalaxySimulationCR
+                            )
 	      == FAIL) {
 	    ENZO_FAIL("Error in GalaxySimulationInitialize[Sub]Grid.");
 	}// end subgrid if
@@ -392,6 +410,14 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
    DataLabel[count++] = Vel2Name;
  if(MetaData.TopGridRank > 2)
    DataLabel[count++] = Vel3Name;
+  if( UseMHD ){
+      DataLabel[count++] = BxName;
+      DataLabel[count++] = ByName;
+      DataLabel[count++] = BzName;
+  }
+  if (HydroMethod == MHD_RK){
+      DataLabel[count++] = PhiName;
+  }
  if(CRModel)
    DataLabel[count++] = CRName;
  if (MultiSpecies) {
@@ -419,6 +445,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 
  for (i = 0; i < count; i++)
    DataUnits[i] = NULL;
+
+ MHDCTSetupFieldLabels();
 
  /* Write parameters to parameter output file */
 

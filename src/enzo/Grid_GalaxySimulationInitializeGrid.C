@@ -88,7 +88,10 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 					 float GalaxySimulationInflowTime,
 					 float GalaxySimulationInflowDensity,
 					 int level,
-					 float GalaxySimulationCR )
+           float GalaxySimulationInitialBfield[MAX_DIMENSION],
+           int GalaxySimulationInitialBfieldTopology,
+           float GalaxySimulationCR
+           )
 {
  /* declarations */
 
@@ -128,15 +131,17 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
     FieldType[NumberOfBaryonFields++] = Velocity2;
   if (GridRank > 2)
     FieldType[NumberOfBaryonFields++] = Velocity3;
-  if (HydroMethod == MHD_RK) {
+  if (UseMHD) {
     FieldType[B1Num = NumberOfBaryonFields++] = Bfield1;
     FieldType[B2Num = NumberOfBaryonFields++] = Bfield2;
     FieldType[B3Num = NumberOfBaryonFields++] = Bfield3;
+  }
+  if(HydroMethod == MHD_RK ){
     FieldType[PhiNum = NumberOfBaryonFields++] = PhiField;
+  }
     if (UseDivergenceCleaning) {
       FieldType[NumberOfBaryonFields++] = Phi_pField;
     }
-  }
 
   /* If cosmic rays present, set up field */
   CRNum = NumberOfBaryonFields;
@@ -214,9 +219,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 
  /* allocate fields */
 
- for (field = 0; field < NumberOfBaryonFields; field++)
-   if (BaryonField[field] == NULL)
-     BaryonField[field] = new float[size];
+  this->AllocateGrids();
 
  /* I'm commenting this out because you the metal field should
     be set during grid initialization rather than just setting
@@ -438,6 +441,23 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	  printf("G_GSIC: negative or zero energy  n = %"ISYM"  temp = %"FSYM"   e = %"FSYM"\n",
 		 n, temperature, BaryonField[1][n]);
 
+  if ( UseMHD ){
+      switch ( GalaxySimulationInitialBfieldTopology ){
+          case 0: //uniform
+          for (dim = 0; dim < GridRank; dim++) {
+              BaryonField[B1Num+dim][n] = GalaxySimulationInitialBfield[dim];
+              if( UseMHDCT)
+              MagneticField[dim][n] = GalaxySimulationInitialBfield[dim];
+          }
+          break;
+          default:
+          ENZO_FAIL("undefined value of GalaxySimulationInitialBfieldTopology");
+      }
+      BaryonField[1][n] += 0.5*(BaryonField[B1Num][n]*BaryonField[B1Num][n]
+                               +BaryonField[B2Num][n]*BaryonField[B2Num][n]
+                               +BaryonField[B3Num][n]*BaryonField[B3Num][n])/
+                                BaryonField[0][n];
+  }//UseMHD
      if( CRModel )
        BaryonField[CRNum][n] = BaryonField[DensNum][n] * GalaxySimulationCR;
 
