@@ -500,6 +500,7 @@ typedef int            HDF5_hid_t;
 #define SINGLE_SUPERNOVA 12
 #define DISTR_FEEDBACK 13
 #define MOM_STAR 14
+#define EMBRA_STAR     15
 
 #define STARMAKE_METHOD(A) (StarParticleCreation >> (A) & 1)
 #define STARFEED_METHOD(A) (StarParticleFeedback >> (A) & 1)

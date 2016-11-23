@@ -65,6 +65,13 @@ SPEXTERN int StarFeedbackDistTotalCells;
 SPEXTERN float StarFeedbackKineticFraction;
 SPEXTERN float StarMakerExplosionDelayTime;
 
+SPEXTERN float StarMakerDensityThreshold;
+SPEXTERN float StarFeedbackDelayTime;
+SPEXTERN float StarFeedbackDeltaT;
+SPEXTERN float StarFeedbackUVLuminosity;
+SPEXTERN int StarMakerJeansMassCriterion;
+SPEXTERN int StarMakerEarlyStellarFeedback;
+
 SPEXTERN float PopIIIStarMass;
 SPEXTERN int   PopIIIInitialMassFunction;
 SPEXTERN int   PopIIIInitialMassFunctionSeed;

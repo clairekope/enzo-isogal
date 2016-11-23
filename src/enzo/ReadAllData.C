@@ -148,6 +148,7 @@ int ReadAllData(char *name, HierarchyEntry *TopGrid, TopGridData &MetaData,
       NumberOfParticleAttributes = 3;
       if (StarMakerTypeIaSNe) NumberOfParticleAttributes++;
       if (StarMakerTypeIISNeMetalField) NumberOfParticleAttributes++;
+      if (STARMAKE_METHOD(EMBRA_STAR)) NumberOfParticleAttributes++;
       AddParticleAttributes = TRUE;
     } else {
       NumberOfParticleAttributes = 0;

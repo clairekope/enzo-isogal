@@ -854,7 +854,8 @@ OBJS_CONFIG_LIB = \
 	star_maker9.o \
 	star_maker10.o \
 	star_maker_h2reg.o \
-    star_maker_ssn.o \
+	star_maker_ssn.o \
+	star_maker_embra.o \
 	StratifiedMediumExplosionInitialize.o \
         SupernovaRestartInitialize.o \
         SysMkdir.o \
