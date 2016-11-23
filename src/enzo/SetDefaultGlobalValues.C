@@ -566,6 +566,13 @@ int SetDefaultGlobalValues(TopGridData &MetaData)
   StarMakerMassEfficiency          = 1;
   StarMakerMinimumMass             = 1.0e9;        // in solar masses
   StarMakerMinimumDynamicalTime    = 1.0e6;        // in years
+  StarMakerVelDivCrit              = TRUE;
+  StarMakerSelfBoundCrit           = FALSE;
+  StarMakerThermalCrit             = TRUE;
+  StarMakerJeansMassCrit           = TRUE;
+  StarMakerH2Crit                  = FALSE;
+  StarMakerStochasticStarFormation = FALSE;
+  StarMakerTemperatureThreshold    = 100;          // in K
   StarMassEjectionFraction         = 0.25;
   StarMetalYield                   = 0.02;
   StarEnergyToThermalFeedback      = 1.0e-5;
