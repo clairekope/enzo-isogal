@@ -262,12 +262,25 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   /* Convert minimum initial overdensity for refinement to mass
      (unless MinimumMass itself was actually set). */
 
+  /*
   if (MinimumMassForRefinement[0] == FLOAT_UNDEFINED) {
     MinimumMassForRefinement[0] = MinimumOverDensityForRefinement[0];
     for (int dim = 0; dim < MetaData.TopGridRank; dim++)
       MinimumMassForRefinement[0] *=(DomainRightEdge[dim]-DomainLeftEdge[dim])/
 	float(MetaData.TopGridDims[dim]);
   }
+  */
+
+  for (i = 0; i < MAX_FLAGGING_METHODS; i++)
+    if (MinimumMassForRefinement[i] == FLOAT_UNDEFINED) {
+      MinimumMassForRefinement[i] = MinimumOverDensityForRefinement[i];
+      for (dim = 0; dim < MetaData.TopGridRank; dim++)
+	MinimumMassForRefinement[i] *=
+	  (DomainRightEdge[dim]-DomainLeftEdge[dim])/
+	  float(MetaData.TopGridDims[dim]);
+    }
+  
+
 
   /* If requested, refine the grid to the desired level. */
 
