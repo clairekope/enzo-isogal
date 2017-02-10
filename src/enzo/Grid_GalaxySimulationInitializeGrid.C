@@ -53,9 +53,11 @@ float gasvel(FLOAT radius, float DiskDensity, FLOAT ExpansionFactor,
 float gauss_mass(FLOAT r, FLOAT z, FLOAT xpos, FLOAT ypos, FLOAT zpos, FLOAT inv [3][3], float DiskDensity, FLOAT ScaleHeightR, FLOAT ScaleHeightz, FLOAT cellwidth);
 void rot_to_disk(FLOAT xpos, FLOAT ypos, FLOAT zpos, FLOAT &xrot, FLOAT &yrot, FLOAT &zrot, FLOAT inv [3][3]);
 
+/* Internal Routines for Disk Potential Setup and for CGM setup */
+float HaloGasDensity(FLOAT R);
+float HaloGasTemperature(FLOAT R);
+
 /* Internal Routines for Disk Potential Setup */
-float HaloGasDensity(FLOAT);
-float HaloGasTemperature(FLOAT);
 float DiskPotentialCircularVelocity(FLOAT cellwidth,FLOAT z,FLOAT density,FLOAT &temperature);
 double trapzd(double (func)(), double a, double b, int n);
 double qromb(double (*func)(double), double a, double b);
@@ -66,7 +68,12 @@ static double r2;
 static float DensityUnits, LengthUnits, TemperatureUnits = 1, TimeUnits, VelocityUnits, MassUnits;
 
 double gScaleHeightR, gScaleHeightz, densicm, MgasScale, Picm, TruncRadius, SmoothRadius, SmoothLength,Ticm;
-double GalaxySimulationGasHalo, GalaxySimulationGasHaloScaleRadius, GalaxySimulationGasHaloDensity;
+
+/* Global variables (within this file, at least) for CGM setup 
+   (also used a bit for disk potential setup) */
+int GalaxySimulationGasHalo;
+double GalaxySimulationGasHaloScaleRadius, GalaxySimulationGasHaloDensity,
+  GalaxySimulationGasHaloTemperature, GalaxySimulationGasHaloAlpha;
 
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 					 float GalaxyMass,
@@ -82,6 +89,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 					 int   GasHalo,
 					 float GasHaloScaleRadius,
 					 float GasHaloDensity,
+					 float GasHaloTemperature,
+					 float GasHaloAlpha,
 					 float AngularMomentum[MAX_DIMENSION],
 					 float UniformVelocity[MAX_DIMENSION], 
 					 int UseMetallicityField, 
@@ -105,20 +114,25 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 
   gScaleHeightR = ScaleHeightR;
   gScaleHeightz = ScaleHeightz;
-  densicm = UniformDensity;
+  densicm = UniformDensity;  // gas density if no halo is used
   MgasScale = GasMass;
-	Ticm = InitialTemperature;
-  Picm = kboltz*UniformDensity*Ticm/(0.6*mh);
+  Ticm = InitialTemperature;  // gas temperature if no halo is used
+  Picm = kboltz*UniformDensity*Ticm/(0.6*mh);  // gas pressure if no halo is used
   TruncRadius = GalaxyTruncationRadius;
   SmoothRadius = TruncRadius*.02/.026;
   SmoothLength = TruncRadius - SmoothRadius;
 
-	GalaxySimulationGasHalo = GasHalo;
-	GalaxySimulationGasHaloScaleRadius = GasHaloScaleRadius;
-	GalaxySimulationGasHaloDensity = GasHaloDensity;
+  /* set all of the gas halo quantities to variables that are global
+     within this file, so the calls to HaloGasDensity() and HaloGasTemperature()
+     are unchanged. */
+  GalaxySimulationGasHalo = GasHalo;   // integer, >= 0
+  GalaxySimulationGasHaloScaleRadius = GasHaloScaleRadius;  // in mpc
+  GalaxySimulationGasHaloDensity = GasHaloDensity; // in grams/cm^3
+  GalaxySimulationGasHaloTemperature = GasHaloTemperature;  // in Kelvin
+  GalaxySimulationGasHaloAlpha = GasHaloAlpha;  // power-law index; unitless
+
 
   /* create fields */
-
   NumberOfBaryonFields = 0;
   DensNum = NumberOfBaryonFields;
   FieldType[NumberOfBaryonFields++] = Density;
@@ -681,21 +695,102 @@ double DiskPotentialDarkMatterMass(FLOAT R){
 } // end DiskPotentialDarkMatterMass
 
 
+/* 
+   Computes halo gas density values assuming a variety of user-specifiable models
+   for the CGM, toggled by the variable GalaxySimulationGasHalo.  Depending on the
+   specific model chosen, different global parameters are needed (as set near the beginning
+   of Grid::GalaxySimluationInitializeGrid).  Halo types are:
+
+   GalaxySimulationGasHalo = 0  -- "zero CGM" - sets to a very low density/temperature
+   GalaxySimulationGasHalo = 1  -- assuming hydrostatic equilibrium of CGM given an NFW dark matter halo 
+                                   and a temperature as a function of radius set by the virial theorom.
+   GalaxySimulationGasHalo = 2  -- assumes density, temperature set according to T = Tvir and entropy
+                                   as a power-law function of radius.
+
+   Inputs:  R - spherical radius, code units
+
+   Returns:  density, grams/cm^3
+
+   Note: using global variables w/following units:
+
+   GalaxySimulationGasHalo: integer, >= 0
+   GalaxySimulationGasHaloScaleRadius, units of Mpc
+   GalaxySimulationGasHaloDensity, units of grams/cm^3
+   GalaxySimulationGasHaloTemperature, units of Kelvin
+   GalaxySimulationGasHaloAlpha, power-law index; unitless
+
+
+*/
+float HaloGasDensity(FLOAT R){
+
+  if(GalaxySimulationGasHalo < 1){
+    /* "zero CGM" - sets a very low density */
+   
+    return densicm;
+
+  } else if(GalaxySimulationGasHalo == 1){
+    /* gets density assuming hydrostatic equilibrium using a temperature 
+       as a function of radius given by virial theorem */
+    
+    double T0,haloDensity;
+    T0 = HaloGasTemperature(GalaxySimulationGasHaloScaleRadius*Mpc/LengthUnits);
+    haloDensity = GalaxySimulationGasHaloDensity*(T0/HaloGasTemperature(R));
+    haloDensity /= POW((R*LengthUnits/GalaxySimulationGasHaloScaleRadius/Mpc),3);
+    return min(haloDensity,GalaxySimulationGasHaloDensity);
+    
+  } else if(GalaxySimulationGasHalo == 2){
+    /* assumes entropy is a power-law function of radius and T = Tvir, so
+       n(r) = n_0 * (r/r_0)**(-alpha/(gamma-1))
+       where n_0 is (user-supplied) number density at (user-supplied) radius r_0,
+       alpha is (user-supplied) power-law exponent,
+       gamma is adiabatic index.
+    */
+    double scale_radius_cgs, this_radius_cgs, power_law_exponent;
+    
+    scale_radius_cgs = GalaxySimulationGasHaloScaleRadius*Mpc;
+    this_radius_cgs = R*LengthUnits;
+    power_law_exponent = -1.0*GalaxySimulationGasHaloAlpha/(Gamma-1.0);
+    
+    return GalaxySimulationGasHaloDensity * POW(this_radius_cgs/scale_radius_cgs, power_law_exponent);
+    
+  } else {
+    ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasDensity().");
+  }
+	
+} // end HaloGasDensity
+
+
+/* 
+   Computes halo gas temperature values assuming a variety of user-specifiable models
+   for the CGM, toggled by the variable GalaxySimulationGasHalo.  The properties of each of the
+   models are described immediately above this in the comments for the function HaloGasDensity(). 
+
+   Inputs:  R - spherical radius, code units
+
+   Returns:  Temperature, Kelvin
+*/
+
 float HaloGasTemperature(FLOAT R){
-/*
- *	computes halo temperature, assuming gas particles follow
- *	KE = 1/2 PE assuming DM potential given in 
- *	DiskPotentialDarkMatterMass() above. 
- *
- *	Parameters:
- *	-----------
- *		R - spherical radius (code units)
- *
- *	Returns: Temperature, Kelvin
- */
-	if(GalaxySimulationGasHalo)
-		return GravConst*DiskPotentialDarkMatterMass(R)*0.6*mh/(3.0*kboltz*R*LengthUnits);
-	return Ticm;
+
+  if(GalaxySimulationGasHalo < 1){
+    /* "zero CGM" - sets a very low temperature */
+   
+    return Ticm;
+
+  } else if(GalaxySimulationGasHalo == 1){
+    /* gets temperature as a function of radius given by virial theorem */
+
+    return GravConst*DiskPotentialDarkMatterMass(R)*0.6*mh/(3.0*kboltz*R*LengthUnits);
+    
+  } else if(GalaxySimulationGasHalo == 2){
+    /* assumes entropy is a power-law function of radius and T = Tvir */
+
+    return GalaxySimulationGasHaloTemperature;
+    
+  } else {
+    ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasTemperature.");
+  }
+  
 }
 
 
@@ -724,26 +819,6 @@ float DiskPotentialGasDensity(FLOAT r,FLOAT z){
 } // end DiskPotentialGasDensity
 
 
-float HaloGasDensity(FLOAT R){
-/*
- *	computes density of gaseous halo, assuming hydro equilibrium
- *	and temperature profile given above in HaloGasTemperature().
- *
- * 	Paramaters:
- * 	-----------
- * 		R - spherical radius, code units
- *
- * 	Returns: density, grams/cm^3
- */
-	if(GalaxySimulationGasHalo){
-		double T0,haloDensity;
-		T0 = HaloGasTemperature(GalaxySimulationGasHaloScaleRadius*Mpc/LengthUnits);
-		haloDensity = GalaxySimulationGasHaloDensity*(T0/HaloGasTemperature(R));
-		haloDensity /= POW((R*LengthUnits/GalaxySimulationGasHaloScaleRadius/Mpc),3);
-		return min(haloDensity,GalaxySimulationGasHaloDensity);
-	}
-	return densicm;
-} // end HaloGasDensity
 
 
 double findZicm(FLOAT r){

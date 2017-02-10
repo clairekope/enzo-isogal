@@ -116,7 +116,9 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 	
 	int GalaxySimulationGasHalo;
 	float GalaxySimulationGasHaloScaleRadius,
-		GalaxySimulationGasHaloDensity;
+	  GalaxySimulationGasHaloDensity,
+	  GalaxySimulationGasHaloTemperature,
+	  GalaxySimulationGasHaloAlpha;
 
   int   GalaxySimulationRefineAtStart,
     GalaxySimulationUseMetallicityField;
@@ -142,6 +144,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasHalo            = 0; // uniform halo w/ densicm and UniformTemperature
   GalaxySimulationGasHaloScaleRadius = .001; // Mpc
   GalaxySimulationGasHaloDensity     = 1.8e-27; // cgs
+  GalaxySimulationGasHaloTemperature = 1.0e+6;  // Kelvin
+  GalaxySimulationGasHaloAlpha       = 2.0/3.0;  // unitless
   GalaxySimulationInflowTime         = -1;
   GalaxySimulationInflowDensity      = 0;
   for (dim = 0; dim < MAX_DIMENSION; dim++) {
@@ -202,6 +206,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationGasHaloScaleRadius);
     ret += sscanf(line, "GalaxySimulationGasHaloDensity = %"FSYM,
 		  &GalaxySimulationGasHaloDensity);
+    ret += sscanf(line, "GalaxySimulationGasHaloTemperature = %"FSYM,
+		  &GalaxySimulationGasHaloTemperature);
+    ret += sscanf(line, "GalaxySimulationGasHaloAlpha = %"FSYM,
+		  &GalaxySimulationGasHaloAlpha);
     ret += sscanf(line, "GalaxySimulationInflowTime = %"FSYM,
 		  &GalaxySimulationInflowTime);
     ret += sscanf(line, "GalaxySimulationInflowDensity = %"FSYM,
@@ -268,6 +276,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 						       GalaxySimulationGasHalo,
 						       GalaxySimulationGasHaloScaleRadius,
 						       GalaxySimulationGasHaloDensity,
+						       GalaxySimulationGasHaloTemperature,
+						       GalaxySimulationGasHaloAlpha,
 						       GalaxySimulationAngularMomentum,
 						       GalaxySimulationUniformVelocity,
 						       GalaxySimulationUseMetallicityField,
@@ -342,6 +352,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 						       GalaxySimulationGasHalo,
 						       GalaxySimulationGasHaloScaleRadius,
 						       GalaxySimulationGasHaloDensity,
+						       GalaxySimulationGasHaloTemperature,
+						       GalaxySimulationGasHaloAlpha,
 						       GalaxySimulationAngularMomentum,
 						       GalaxySimulationUniformVelocity,
 						       GalaxySimulationUseMetallicityField,
@@ -513,6 +525,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
      GalaxySimulationGasHaloScaleRadius);
    fprintf(Outfptr, "GalaxySimulationGasHaloDensity = %"GOUTSYM"\n",
      GalaxySimulationGasHaloDensity);
+   fprintf(Outfptr, "GalaxySimulationGasHaloTemperature = %"GOUTSYM"\n",
+     GalaxySimulationGasHaloTemperature);
+   fprintf(Outfptr, "GalaxySimulationGasHaloAlpha = %"GOUTSYM"\n",
+     GalaxySimulationGasHaloAlpha);
    fprintf(Outfptr, "GalaxySimulationInflowTime = %"GOUTSYM"\n",
 	   GalaxySimulationInflowTime);
    fprintf(Outfptr, "GalaxySimulationInflowDensity = %"GOUTSYM"\n",
