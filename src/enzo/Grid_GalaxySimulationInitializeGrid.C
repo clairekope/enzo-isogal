@@ -751,7 +751,7 @@ float HaloGasDensity(FLOAT R){
     this_radius_cgs = R*LengthUnits;
     power_law_exponent = -1.0*GalaxySimulationGasHaloAlpha/(Gamma-1.0);
     
-    return GalaxySimulationGasHaloDensity * POW(this_radius_cgs/scale_radius_cgs, power_law_exponent);
+    return GalaxySimulationGasHaloDensity*POW(this_radius_cgs/scale_radius_cgs, power_law_exponent);
     
   } else {
     ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasDensity().");

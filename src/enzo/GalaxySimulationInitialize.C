@@ -154,7 +154,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
     GalaxySimulationAngularMomentum[dim] = 0.0;
     GalaxySimulationUniformVelocity[dim] = 0.0;
   }
-  GalaxySimulationUniformDensity = 1.0E-28;
+  GalaxySimulationUniformDensity   = 1.0E-28;
   GalaxySimulationUniformEnergy = 1.0;
   GalaxySimulationCR = .01;
   GalaxySimulationUniformCR = .01;
