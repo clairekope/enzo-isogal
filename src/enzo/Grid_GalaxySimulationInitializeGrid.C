@@ -73,7 +73,8 @@ double gScaleHeightR, gScaleHeightz, densicm, MgasScale, Picm, TruncRadius, Smoo
    (also used a bit for disk potential setup) */
 int GalaxySimulationGasHalo;
 double GalaxySimulationGasHaloScaleRadius, GalaxySimulationGasHaloDensity,
-  GalaxySimulationGasHaloTemperature, GalaxySimulationGasHaloAlpha;
+  GalaxySimulationGasHaloTemperature, GalaxySimulationGasHaloAlpha,
+  GalaxySimulationGasHaloCoreEntropy;
 
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 					 float GalaxyMass,
@@ -91,6 +92,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 					 float GasHaloDensity,
 					 float GasHaloTemperature,
 					 float GasHaloAlpha,
+					 float GasHaloCoreEntropy,
 					 float AngularMomentum[MAX_DIMENSION],
 					 float UniformVelocity[MAX_DIMENSION], 
 					 int UseMetallicityField, 
@@ -130,6 +132,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
   GalaxySimulationGasHaloDensity = GasHaloDensity; // in grams/cm^3
   GalaxySimulationGasHaloTemperature = GasHaloTemperature;  // in Kelvin
   GalaxySimulationGasHaloAlpha = GasHaloAlpha;  // power-law index; unitless
+  GalaxySimulationGasHaloCoreEntropy = GasHaloCoreEntropy;  // power-law index; unitless
 
 
   /* create fields */
@@ -706,6 +709,8 @@ double DiskPotentialDarkMatterMass(FLOAT R){
                                    and a temperature as a function of radius set by the virial theorom.
    GalaxySimulationGasHalo = 2  -- assumes density, temperature set according to T = Tvir and entropy
                                    as a power-law function of radius.
+   GalaxySimulationGasHalo = 3  -- as #2, but the entropy distribution has a floor value, so S = S_f + S_0 (r/r_0)^alpha
+
 
    Inputs:  R - spherical radius, code units
 
@@ -718,6 +723,7 @@ double DiskPotentialDarkMatterMass(FLOAT R){
    GalaxySimulationGasHaloDensity, units of grams/cm^3
    GalaxySimulationGasHaloTemperature, units of Kelvin
    GalaxySimulationGasHaloAlpha, power-law index; unitless
+   GalaxySimulationGasHaloCoreEntropy, units of keV cm^2
 
 
 */
@@ -753,6 +759,37 @@ float HaloGasDensity(FLOAT R){
     
     return GalaxySimulationGasHaloDensity*POW(this_radius_cgs/scale_radius_cgs, power_law_exponent);
     
+  } else if(GalaxySimulationGasHalo == 3){
+    /* assumes entropy is a  power-law function of radius and T = Tvir that has a core (i.e., minimum 
+       entropy value), so:
+
+       n(r) = (Tvir / (Score + S_0*(r/r_0)^alpha))^(1/(gamma-1))
+
+       where n_0 is (user-supplied) number density at (user-supplied) radius r_0,
+       Tvir is user-supplied temperature,
+       Score is a user-supplied entropy,
+       alpha is (user-supplied) power-law exponent,
+       gamma is adiabatic index.
+    */
+
+    double scale_radius_cgs, this_radius_cgs, power_law_exponent, S_0, T_kev, n_0, this_number_density;
+
+    // get radii in common set of units
+    scale_radius_cgs = GalaxySimulationGasHaloScaleRadius*Mpc;
+    this_radius_cgs = R*LengthUnits;
+
+    // now get number density using expression above
+
+    T_kev = GalaxySimulationGasHaloTemperature*8.6173e-08;  // halo temperature in keV
+    n_0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);  // convert n_0 to electron number density 
+    S_0 = T_kev / POW(n_0,Gamma-1.0);   // S_0 in units of kev cm^2
+
+    // get number density at this radius giving the requested info
+    this_number_density = T_kev/(GalaxySimulationGasHaloCoreEntropy + S_0*POW(this_radius_cgs/scale_radius_cgs, power_law_exponent));
+    this_number_density = POW(this_number_density, 1.0/(Gamma-1.0));
+
+    return this_number_density*0.6*1.67e-24;  // return physical density
+    
   } else {
     ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasDensity().");
   }
@@ -787,6 +824,12 @@ float HaloGasTemperature(FLOAT R){
 
     return GalaxySimulationGasHaloTemperature;
     
+  } else if(GalaxySimulationGasHalo == 3){
+
+    /* assumes entropy is a cored power-law function of radius and T = Tvir */
+
+    return GalaxySimulationGasHaloTemperature;
+
   } else {
     ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasTemperature.");
   }

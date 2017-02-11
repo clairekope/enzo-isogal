@@ -1133,6 +1133,10 @@ Isolated Galaxy Evolution (31)
 ``GalaxySimulationGasHaloAlpha`` (external)
     Sets the entropy power law index for GalaxySimulationGasHalo=2.  (Unitless)
     Default: 0.6667
+``GalaxySimulationGasHaloCoreEntropy`` (external)
+    Sets the core entropy for GalaxySimulationGasHalo=3.  (Units are
+    in keV cm^2)
+    Default: 5.0
     
 .. _shearingbox_param:
 
