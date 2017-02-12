@@ -34,7 +34,6 @@
 #define mh (1.67e-24)           //Mass of Hydrogen [g]
 #define kboltz (1.381e-16)      //Boltzmann's Constant [ergK-1]
 
-
 int GetUnits(float *DensityUnits, float *LengthUnits,
 	     float *TemperatureUnits, float *TimeUnits,
 	     float *VelocityUnits, FLOAT Time);
@@ -69,12 +68,34 @@ static float DensityUnits, LengthUnits, TemperatureUnits = 1, TimeUnits, Velocit
 
 double gScaleHeightR, gScaleHeightz, densicm, MgasScale, Picm, TruncRadius, SmoothRadius, SmoothLength,Ticm;
 
-/* Global variables (within this file, at least) for CGM setup 
+/* Global variables (within this file) for circumgalactic medium setup 
    (also used a bit for disk potential setup) */
 int GalaxySimulationGasHalo;
 double GalaxySimulationGasHaloScaleRadius, GalaxySimulationGasHaloDensity,
   GalaxySimulationGasHaloTemperature, GalaxySimulationGasHaloAlpha,
-  GalaxySimulationGasHaloCoreEntropy;
+  GalaxySimulationGasHaloCoreEntropy, GalaxySimulationGasHaloGalaxyMass,
+  GalaxySimulationGasHaloDMConcentration;
+
+/* struct to carry around data required for circumgalactic media
+   if we need to generate radial profiles of halo quantities via 
+   numerical integration */
+struct CGMdata {
+  double *n_rad, *T_rad, *rad, R_outer, dr;
+  int nbins;
+};
+struct CGMdata CGM_data;
+
+/* declarations for a bunch of functions needed to generate radial profiles
+   of halo quantities via numerical integration - see the actual functions for
+   descriptions. */
+double halo_S_of_r(double r);
+double halo_dSdr(double r);
+double halo_dn_dr(double r, double n);
+double halo_g_of_r(double r);
+double halo_galmass_at_r(double r);
+void halo_init(void);
+void halo_clean(void);
+
 
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 					 float GalaxyMass,
@@ -133,8 +154,14 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
   GalaxySimulationGasHaloTemperature = GasHaloTemperature;  // in Kelvin
   GalaxySimulationGasHaloAlpha = GasHaloAlpha;  // power-law index; unitless
   GalaxySimulationGasHaloCoreEntropy = GasHaloCoreEntropy;  // power-law index; unitless
+  GalaxySimulationGasHaloGalaxyMass = GalaxyMass;
+  GalaxySimulationGasHaloDMConcentration = DMConcentration;
 
-
+  /*  initializes halo radius, density, temperature profiles 
+      for circumgalactic medium if needed (i.e., for CGM profiles that
+      require integration to get quantities we care about. */
+  halo_init(); 
+  
   /* create fields */
   NumberOfBaryonFields = 0;
   DensNum = NumberOfBaryonFields;
@@ -541,6 +568,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 
      } // end loop over grid
 
+ halo_clean(); // deletes halo-related arrays if needed (for circumgalactic medium)
+ 
  return SUCCESS;
 
 }
@@ -698,6 +727,7 @@ double DiskPotentialDarkMatterMass(FLOAT R){
 } // end DiskPotentialDarkMatterMass
 
 
+/* -------------------- BEGINNING OF Routines used for initializing the circumgalactic medium -------------------- */
 /* 
    Computes halo gas density values assuming a variety of user-specifiable models
    for the CGM, toggled by the variable GalaxySimulationGasHalo.  Depending on the
@@ -710,7 +740,9 @@ double DiskPotentialDarkMatterMass(FLOAT R){
    GalaxySimulationGasHalo = 2  -- assumes density, temperature set according to T = Tvir and entropy
                                    as a power-law function of radius.
    GalaxySimulationGasHalo = 3  -- as #2, but the entropy distribution has a floor value, so S = S_f + S_0 (r/r_0)^alpha
-
+   GalaxySimulationGasHalo = 4  -- assumes a hydrostatic equilibrium of CGM given an NFW dark matter halo
+                                   and an entropy that is a power-law function of radius.
+   GalaxySimulationGasHalo = 5  -- as #4, but the entropy distribution has a floor value, so S = S_f + S_0 (r/r_0)^alpha
 
    Inputs:  R - spherical radius, code units
 
@@ -724,8 +756,6 @@ double DiskPotentialDarkMatterMass(FLOAT R){
    GalaxySimulationGasHaloTemperature, units of Kelvin
    GalaxySimulationGasHaloAlpha, power-law index; unitless
    GalaxySimulationGasHaloCoreEntropy, units of keV cm^2
-
-
 */
 float HaloGasDensity(FLOAT R){
 
@@ -780,7 +810,7 @@ float HaloGasDensity(FLOAT R){
 
     // now get number density using expression above
 
-    T_kev = GalaxySimulationGasHaloTemperature*8.6173e-08;  // halo temperature in keV
+    T_kev = GalaxySimulationGasHaloTemperature*8.6174e-08;  // halo temperature in keV
     n_0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);  // convert n_0 to electron number density 
     S_0 = T_kev / POW(n_0,Gamma-1.0);   // S_0 in units of kev cm^2
 
@@ -789,6 +819,30 @@ float HaloGasDensity(FLOAT R){
     this_number_density = POW(this_number_density, 1.0/(Gamma-1.0));
 
     return this_number_density*0.6*1.67e-24;  // return physical density
+    
+  } else if(GalaxySimulationGasHalo == 4){
+    /* assumes entropy is a power-law function of radius and gas is in hydrostatic equilibrium w/
+       the NFW halo.  */
+
+    double this_radius_cgs;
+    int index;
+    this_radius_cgs = R*LengthUnits;  // radius in CGS
+    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
+    if(index<0) index=0;  // check our indices
+    if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
+    return CGM_data.n_rad[index]*0.6*1.67e-24;  // return physical density
+    
+  } else if(GalaxySimulationGasHalo == 5){
+    /* assumes entropy is a power-law function of radius *WITH* an entropy core, and that gas is in 
+       hydrostatic equilibrium w/the NFW halo.  */
+
+    double this_radius_cgs;
+    int index;
+    this_radius_cgs = R*LengthUnits;  // radius in CGS
+    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
+    if(index<0) index=0;  // check our indices
+    if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
+    return CGM_data.n_rad[index]*0.6*1.67e-24;  // return physical density
     
   } else {
     ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasDensity().");
@@ -830,11 +884,259 @@ float HaloGasTemperature(FLOAT R){
 
     return GalaxySimulationGasHaloTemperature;
 
+  } else if(GalaxySimulationGasHalo == 4){
+    /* assumes entropy is a power-law function of radius and gas is in hydrostatic equilibrium */
+
+    double this_radius_cgs;
+    int index;
+    this_radius_cgs = R*LengthUnits;  // radius in CGS
+    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
+    if(index<0) index=0;  // check our indices
+    if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
+    return CGM_data.T_rad[index];  // return temperature in Kelvin
+
   } else {
-    ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasTemperature.");
+    /* assumes entropy is a cored power-law function of radius and gas is in hydrostatic equilibrium */
+
+    double this_radius_cgs;
+    int index;
+    this_radius_cgs = R*LengthUnits;  // radius in CGS
+    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
+    if(index<0) index=0;  // check our indices
+    if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
+    return CGM_data.T_rad[index];  // return temperature in Kelvin
+
   }
   
 }
+
+/* Initializes arrays of number density, temperature, and radius for 
+   choices of circumgalactic medium that require numerical integration based
+   on user-defined parameters.  These quantities are stored in a global struct
+   for convenience (global within this file, at least). */
+void halo_init(void){
+
+  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 5) return;
+
+  double k1, k2, k3, k4, this_n, this_radius, temperature;
+  double M, Rvir, rho_crit = 1.8788e-29*0.49, Tvir, n0, r0, dr;
+;
+  int index;
+  
+  CGM_data.nbins = 8192;
+  
+  CGM_data.n_rad = new double[CGM_data.nbins];
+  CGM_data.T_rad = new double[CGM_data.nbins];
+  CGM_data.rad   = new double[CGM_data.nbins];
+
+  for(int i=0;i<CGM_data.nbins;i++) CGM_data.n_rad[i]=CGM_data.T_rad[i]=CGM_data.rad[i]=-1.0;
+  
+  M = GalaxySimulationGasHaloGalaxyMass * SolarMass;  // halo total mass in CGS
+  
+  Rvir = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+
+  CGM_data.R_outer = Rvir;  // integrate out to virial radius of halo
+
+  CGM_data.dr = CGM_data.R_outer / double(CGM_data.nbins);  // stepsize for RK4 integration and radial bins
+  
+  // set some quantities based on user inputs; this defines our integration
+  Tvir = GalaxySimulationGasHaloTemperature;
+  n0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);
+  r0 = GalaxySimulationGasHaloScaleRadius*Mpc;
+
+  // used for our numerical integration
+  dr = CGM_data.dr;
+  this_n = n0;
+  this_radius = r0;
+
+  // set the bin that we start at (otherwise it doesn't get set!)
+  index = int(this_radius/dr+1.0e-3);
+  CGM_data.n_rad[index] = this_n;
+  CGM_data.T_rad[index] = Tvir;
+  CGM_data.rad[index] = this_radius;
+
+  /* starting at the point where the user has defined the radius, density, and 
+     temperature, use RK4 to integrate the number density outward to R_outer using the expression 
+     for dn_dr in another function.  Calculate the temperature using the entropy at this radius. */
+  while(this_radius <= CGM_data.R_outer){
+    
+    // calculate RK4 coefficients.
+    k1 = halo_dn_dr(this_radius,         this_n);
+    k2 = halo_dn_dr(this_radius + 0.5*dr, this_n + 0.5*dr*k1);
+    k3 = halo_dn_dr(this_radius + 0.5*dr, this_n + 0.5*dr*k2);
+    k4 = halo_dn_dr(this_radius + dr,     this_n + dr*k3);
+
+    // update density and radius
+    this_n += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
+    this_radius += dr;  // new radius
+
+    // calculate temperature at this radius using known entropy 
+    temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
+
+    // store everything in the struct
+    index = int(this_radius/dr+1.0e-3);    
+    CGM_data.n_rad[index] = this_n;
+    CGM_data.T_rad[index] = temperature;
+    CGM_data.rad[index] = this_radius;
+  }
+
+
+  /* now we do the same thing as above, but integrating intward to zero radius. */
+  this_n = n0;
+  this_radius = r0;
+  dr *= -1.0;
+
+  while(this_radius > 0.0){
+    
+    // calculate RK4 coefficients.
+    k1 = halo_dn_dr(this_radius,         this_n);
+    k2 = halo_dn_dr(this_radius + 0.5*dr, this_n + 0.5*dr*k1);
+    k3 = halo_dn_dr(this_radius + 0.5*dr, this_n + 0.5*dr*k2);
+    k4 = halo_dn_dr(this_radius + dr,     this_n + dr*k3);
+
+    // update density and radius
+    this_n += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
+    this_radius += dr;  // new radius
+
+    // calculate temperature at this radius using known entropy 
+    temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
+
+    // store everything in the struct
+    index = int(this_radius/(-1.0*dr)+1.0e-3);
+
+    if(index >= 0){
+      CGM_data.n_rad[index] = this_n;
+      CGM_data.T_rad[index] = temperature;
+      CGM_data.rad[index] = this_radius;
+    }
+  }
+
+  // this integration acts a little squirrelly around r=0 because the mass values are garbage.  Cheap fix.
+  CGM_data.rad[0]=CGM_data.rad[1];
+  CGM_data.n_rad[0]=CGM_data.n_rad[1];
+  CGM_data.T_rad[0]=CGM_data.T_rad[1];
+  
+  return;
+}
+
+/* If we declared these arrays, clean them up at the end of the problem initialization. 
+   Software campsite principle. */
+void halo_clean(void){
+
+  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 5) return;
+
+  delete [] CGM_data.n_rad;
+  delete [] CGM_data.T_rad;
+  delete [] CGM_data.rad;
+
+  return;
+}
+
+/* Halo entropy as a function of radius for the user-specified CGM types that require numerical
+   integration. 
+
+   Input is radius in CGS units.  output is entropy in CGS units (Kelvin cm^2) 
+*/
+double halo_S_of_r(double r){
+
+  double Tvir, n0, r0, Smin, S0;
+
+  // calculate a bunch of things based on user inputs
+  Tvir = GalaxySimulationGasHaloTemperature;  // in Kelvin
+  n0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);  // convert from density to electron number density (cm^-3)
+  r0 = GalaxySimulationGasHaloScaleRadius*Mpc;  // scale radius in CGS
+  Smin = GalaxySimulationGasHaloCoreEntropy/8.621738e-8;  // given in keV cm^2, converted to Kelvin cm^2
+  S0 = Tvir / POW(n0,Gamma-1);  // entropy at scale radius, in units of Kelvin cm^2
+
+  if(GalaxySimulationGasHalo == 4){
+
+    return S0*POW(r/r0,GalaxySimulationGasHaloAlpha);  // has units of Kelvin cm^2
+
+  } else if (GalaxySimulationGasHalo == 5){
+
+    return Smin + S0*POW(r/r0,GalaxySimulationGasHaloAlpha);  // has units of Kelvin cm^2
+
+  } else {
+    ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
+  }
+
+}
+
+/* dEntropy/dr as a function of radius for the user-specified CGM types that require numerical
+   integration. 
+
+   Input is radius in CGS units; output is entropy gradient in CGS units (Kelvin*cm) */
+double halo_dSdr(double r){
+
+  double Tvir, alpha, n0, r0, Smin, S0;
+
+  // calculate a bunch of things based on user inputs
+  Tvir = GalaxySimulationGasHaloTemperature;  // in Kelvin
+  n0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);  // convert from density to electron number density (cm^-3)
+  r0 = GalaxySimulationGasHaloScaleRadius*Mpc;  // scale radius in CGS
+  Smin = GalaxySimulationGasHaloCoreEntropy/8.621738e-8;  // given in keV cm^2, converted to Kelvin cm^2
+  S0 = Tvir / POW(n0,Gamma-1);  // entropy at scale radius, in units of Kelvin cm^2
+
+  if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5){
+
+    // has units of Kelvin*cm, same deriv for both halo types (since constant drops out)
+    return S0*GalaxySimulationGasHaloAlpha*
+      POW(r/r0,GalaxySimulationGasHaloAlpha-1.0)/r0;
+    
+  } else {
+    ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
+  }
+}
+
+/* dn/dr as a function of radius and halo electron number density.  This quantity is calculated
+   by assuming that gravity and pressure are in hydrostatic equilibrium in a halo with a specified 
+   entropy profile S(r).
+
+   Input is radius in CGM units and electron number density in units 
+   of particles per cm^-3.  Output is dn/dr in CGS units, so particles per cm^4. */
+double halo_dn_dr(double r, double n){
+  
+  return -1.0*( n*1.22*mh*halo_g_of_r(r) + kboltz*POW(n,Gamma)*halo_dSdr(r) ) /
+    ( Gamma * kboltz * halo_S_of_r(r) * POW(n, Gamma-1));
+  
+}
+
+/* halo gravitational acceleration as a function of radius.
+
+   Input is the radius in CGS units and returns the MAGNITUDE of the 
+   acceleration in CGS units.  */
+double halo_g_of_r(double r){
+  return GravConst*halo_galmass_at_r(r)/(r*r); 
+}
+
+/* halo galaxy mass at a given radius, using user-defined global parameters for galaxy
+   quantities and assuming that all halo mass is in an NFW halo.  This is not totally
+   correct near the center of the halo, but since we're using it for the CGM initialization 
+   and are dealing with radii that aren't particularly near the center of the halo, this 
+   approximation is probably fine. 
+
+   Input is the radius in CGS units; output is the enclosed mass at that radius in CGS units.
+*/
+double halo_galmass_at_r(double r){
+
+  double M, C, Rvir, rho_0, Rs, M_within_r;
+  double rho_crit = 1.8788e-29*0.49;
+  
+  M = GalaxySimulationGasHaloGalaxyMass * SolarMass;  // halo total mass in CGS
+  C = GalaxySimulationGasHaloDMConcentration;  // concentration parameter for NFW halo
+  
+  Rvir = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+  Rs = Rvir/C;  // scale radius of NFW halo in CGS
+  rho_0 = 200.0*POW(C,3)/3.0/(log(1.0+C) - C/(1.0+C))*rho_crit;  // rho_0 for NFW halo in CGS
+
+  // mass w/in radius R
+  M_within_r = 4.0*3.14159*rho_0*POW(Rs,3.0)*(log((Rs+r)/Rs) - r/(Rs+r));
+
+  return M_within_r;
+  
+}
+
+/* -------------------- END OF Routines used for initializing the circumgalactic medium -------------------- */
 
 
 float DiskPotentialGasDensity(FLOAT r,FLOAT z){

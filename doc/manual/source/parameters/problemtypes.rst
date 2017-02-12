@@ -1109,24 +1109,27 @@ Isolated Galaxy Evolution (31)
 ``GalaxySimulationGasHalo`` (external)
     Controls the properties of the circumgalactic
     medium used.  Choices are no CGM (0), hydrostatic equilibrium, relatively
-    diffuse CGM (1), power-law entropy profile (2).
+    diffuse CGM (1), power-law entropy profile (2). cored power-law
+    entropy profile (3), power-law entropy profile in hydrostatic
+    equilibrium (4), cored power-law entropy profile in hydrostatic
+    equilibrium (5).  (unitless)
     Default: 0.
 ``GalaxySimulationGasHaloScaleRadius`` (external)
     Sets the scale radius for the CGM. Unused for GalaxySimulationGasHalo=0. For
     GalaxySimulationGasHalo=1, this is effectively the NFW scale
-    radius.  For GalaxySimulationGasHalo=2, this is the radius where
-    the density is set. 
+    radius.  For GalaxySimulationGasHalo=2-5, this is the radius where
+    the density is set. (Units are Mpc)
     Default: 0.001
 ``GalaxySimulationGasHaloDensity`` (external)
     Sets the density normalization for the CGM.  Unused for GalaxySimulationGasHalo=0. For
     GalaxySimulationGasHalo=1, this effectively controls the maximum
-    CGM density.  For GalaxySimulationGasHalo=2, this is the density
+    CGM density.  For GalaxySimulationGasHalo=2-5, this is the density
     at the radius set by GalaxySimulationGasHaloScaleRadius.  (Units
     are CGS density, g/cm^3)
     Default: 1.67e-27
 ``GalaxySimulationGasHaloTemperature`` (external)
     Sets the temperature normalization of the CGM.  Unused for
-    GalaxySimulationGasHalo=0, 1.  For GalaxySimulationGasHalo=2,
+    GalaxySimulationGasHalo=0, 1.  For GalaxySimulationGasHalo=2-5,
     this is meant to be approximately the virial temperature.  (Units
     are Kelvin)
     Default: 1.0e+6
@@ -1134,7 +1137,7 @@ Isolated Galaxy Evolution (31)
     Sets the entropy power law index for GalaxySimulationGasHalo=2.  (Unitless)
     Default: 0.6667
 ``GalaxySimulationGasHaloCoreEntropy`` (external)
-    Sets the core entropy for GalaxySimulationGasHalo=3.  (Units are
+    Sets the core entropy for GalaxySimulationGasHalo=3 and 5.  (Units are
     in keV cm^2)
     Default: 5.0
     
