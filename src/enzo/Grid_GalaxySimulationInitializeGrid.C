@@ -736,7 +736,7 @@ double DiskPotentialDarkMatterMass(FLOAT R){
 
    GalaxySimulationGasHalo = 0  -- "zero CGM" - sets to a very low density/temperature
    GalaxySimulationGasHalo = 1  -- assuming hydrostatic equilibrium of CGM given an NFW dark matter halo 
-                                   and a temperature as a function of radius set by the virial theorom.
+                                   and a temperature as a function of radius set by the virial theorem.
    GalaxySimulationGasHalo = 2  -- assumes density, temperature set according to T = Tvir and entropy
                                    as a power-law function of radius.
    GalaxySimulationGasHalo = 3  -- as #2, but the entropy distribution has a floor value, so S = S_f + S_0 (r/r_0)^alpha
@@ -820,26 +820,14 @@ float HaloGasDensity(FLOAT R){
 
     return this_number_density*0.6*1.67e-24;  // return physical density
     
-  } else if(GalaxySimulationGasHalo == 4){
-    /* assumes entropy is a power-law function of radius and gas is in hydrostatic equilibrium w/
-       the NFW halo.  */
+  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5){
+    /* assumes entropy is a power-law function of radius OR a cored power-law function
+       of radius and gas is in hydrostatic equilibrium w/the NFW halo.  */
 
     double this_radius_cgs;
     int index;
     this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
-    if(index<0) index=0;  // check our indices
-    if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
-    return CGM_data.n_rad[index]*0.6*1.67e-24;  // return physical density
-    
-  } else if(GalaxySimulationGasHalo == 5){
-    /* assumes entropy is a power-law function of radius *WITH* an entropy core, and that gas is in 
-       hydrostatic equilibrium w/the NFW halo.  */
-
-    double this_radius_cgs;
-    int index;
-    this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
+    index = int(this_radius_cgs/CGM_data.dr+1.0e-3);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
     return CGM_data.n_rad[index]*0.6*1.67e-24;  // return physical density
@@ -884,28 +872,19 @@ float HaloGasTemperature(FLOAT R){
 
     return GalaxySimulationGasHaloTemperature;
 
-  } else if(GalaxySimulationGasHalo == 4){
+  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5){
     /* assumes entropy is a power-law function of radius and gas is in hydrostatic equilibrium */
 
     double this_radius_cgs;
     int index;
     this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
+    index = int(this_radius_cgs/CGM_data.dr+1.0e-3);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
     return CGM_data.T_rad[index];  // return temperature in Kelvin
 
   } else {
-    /* assumes entropy is a cored power-law function of radius and gas is in hydrostatic equilibrium */
-
-    double this_radius_cgs;
-    int index;
-    this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr+1.0e+3);  // index in array of CGM values
-    if(index<0) index=0;  // check our indices
-    if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
-    return CGM_data.T_rad[index];  // return temperature in Kelvin
-
+    ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasTemperature().");
   }
   
 }
