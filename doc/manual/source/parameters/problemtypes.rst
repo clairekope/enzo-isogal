@@ -1140,6 +1140,15 @@ Isolated Galaxy Evolution (31)
     Sets the core entropy for GalaxySimulationGasHalo=3 and 5.  (Units are
     in keV cm^2)
     Default: 5.0
+``GalaxySimulationGasHaloMetallicity`` (external)
+    Sets metallicity for the CGM.  (Units are in Zsun)
+    Default: 0.1
+``GalaxySimulationDiskMetallicityEnhancementFactor`` (external)
+    Sets metallicity of the galactic disk based on the metallicity
+    of the CGM by enhancing it (or diminishing it) by a scaling
+    factor.
+    Default: 3.0
+    
     
 .. _shearingbox_param:
 

@@ -74,7 +74,9 @@ int GalaxySimulationGasHalo;
 double GalaxySimulationGasHaloScaleRadius, GalaxySimulationGasHaloDensity,
   GalaxySimulationGasHaloTemperature, GalaxySimulationGasHaloAlpha,
   GalaxySimulationGasHaloCoreEntropy, GalaxySimulationGasHaloGalaxyMass,
-  GalaxySimulationGasHaloDMConcentration;
+  GalaxySimulationGasHaloDMConcentration,
+  GalaxySimulationGasHaloMetallicity,
+  GalaxySimulationDiskMetallicityEnhancementFactor;
 
 /* struct to carry around data required for circumgalactic media
    if we need to generate radial profiles of halo quantities via 
@@ -114,6 +116,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 					 float GasHaloTemperature,
 					 float GasHaloAlpha,
 					 float GasHaloCoreEntropy,
+					 float GasHaloMetallicity,
+					 float DiskMetallicityEnhancementFactor,
 					 float AngularMomentum[MAX_DIMENSION],
 					 float UniformVelocity[MAX_DIMENSION], 
 					 int UseMetallicityField, 
@@ -156,6 +160,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
   GalaxySimulationGasHaloCoreEntropy = GasHaloCoreEntropy;  // power-law index; unitless
   GalaxySimulationGasHaloGalaxyMass = GalaxyMass;
   GalaxySimulationGasHaloDMConcentration = DMConcentration;
+  GalaxySimulationGasHaloMetallicity = GasHaloMetallicity; // Zsun
+  GalaxySimulationDiskMetallicityEnhancementFactor = DiskMetallicityEnhancementFactor; // w.r.t to halo
 
   /*  initializes halo radius, density, temperature profiles 
       for circumgalactic medium if needed (i.e., for CGM profiles that
@@ -265,7 +271,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 
   this->AllocateGrids();
 
- /* I'm commenting this out because you the metal field should
+ /* I'm commenting this out because the metal field should
     be set during grid initialization rather than just setting
     it as a constant color field. -- DWS */
  // /* set metals to small value */
@@ -289,7 +295,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	  /* Set a background metallicity value that will scale with density.
 	     If the cell is in the disk, this will be increased by a factor
 	     of 3.  This should really be a parameter that is read in -- DWS */ 
-	  initial_metallicity = 0.1;
+	  initial_metallicity = GalaxySimulationGasHaloMetallicity;
 	}
 
 	/* Compute position */
@@ -442,8 +448,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	    temperature = temp1;
 	    if( temperature > 1.0e7 )
 	      temperature = init_temp;
-	    if( UseMetallicityField ) // Here we're setting the disk to be 3x more enriched -- DWS
-	      initial_metallicity *= 3.0;
+	    if( UseMetallicityField ) // Here we're setting the disk to be X times more enriched -- DWS
+	      initial_metallicity *= GalaxySimulationDiskMetallicityEnhancementFactor;
 	  }
 
 	} // end: if (r < DiskRadius)
@@ -756,6 +762,7 @@ double DiskPotentialDarkMatterMass(FLOAT R){
    GalaxySimulationGasHaloTemperature, units of Kelvin
    GalaxySimulationGasHaloAlpha, power-law index; unitless
    GalaxySimulationGasHaloCoreEntropy, units of keV cm^2
+   GalaxySimulationGasHaloMetallicity, units of Zsun
 */
 float HaloGasDensity(FLOAT R){
 
@@ -830,6 +837,8 @@ float HaloGasDensity(FLOAT R){
     index = int(this_radius_cgs/CGM_data.dr+1.0e-3);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
+    fprintf(stdout,"index = %"ISYM" \n",index);
+    fprintf(stdout,"CGM_data.nrad = %"GSYM" \n",CGM_data.n_rad[index]);
     return CGM_data.n_rad[index]*0.6*1.67e-24;  // return physical density
     
   } else {
@@ -899,7 +908,7 @@ void halo_init(void){
 
   double k1, k2, k3, k4, this_n, this_radius, temperature;
   double M, Rvir, rho_crit = 1.8788e-29*0.49, Tvir, n0, r0, dr;
-;
+
   int index;
   
   CGM_data.nbins = 8192;
@@ -914,7 +923,7 @@ void halo_init(void){
   
   Rvir = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
 
-  CGM_data.R_outer = Rvir;  // integrate out to virial radius of halo
+  CGM_data.R_outer = Rvir;  // integrate out to the virial radius of halo
 
   CGM_data.dr = CGM_data.R_outer / double(CGM_data.nbins);  // stepsize for RK4 integration and radial bins
   
