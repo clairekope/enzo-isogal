@@ -837,8 +837,6 @@ float HaloGasDensity(FLOAT R){
     index = int(this_radius_cgs/CGM_data.dr+1.0e-3);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
-    fprintf(stdout,"index = %"ISYM" \n",index);
-    fprintf(stdout,"CGM_data.nrad = %"GSYM" \n",CGM_data.n_rad[index]);
     return CGM_data.n_rad[index]*0.6*1.67e-24;  // return physical density
     
   } else {
