@@ -1097,26 +1097,59 @@ Isolated Galaxy Evolution (31)
 ``GalaxySimulationRPSWindDensity`` (external)
     For case 1, this is the density of the RPS wind, in code units.
     Default: 1.0
-``GalaxySimulationRPSWindtotalEnergy`` (external)
+``GalaxySimulationRPSWindTotalEnergy`` (external)
     For case 1, this is the total energy of the RPS wind, in code units.
     Default: 1.0
 ``GalaxySimulationRPSWindPressure`` (external)
-    For case 1, this is the pressutre of the RPS wind (unused).
+    For case 1, this is the pressure of the RPS wind (unused).
     Default: 1.0
 ``GalaxySimulationRPSWindVelocity`` (external)
     For case 1, This is the wind velocity (code units)
     Default: 0 0 0
-``GalaxySimulationRPSWindPreWindDensity`` (external)
-    This is the density applied to the boundary before the wind arrives.
-    Default: 1.0
-``GalaxySimulationRPSWindPreWindTotalEnergy`` (external)
-    This is the total energy applied to the boundary before the wind arrives.
-    Default: 1.0
-``GalaxySimulationRPSWindPreWindVelocity`` (external)
-    This is the velocity vector applied to the boundary before the
-    wind arrives.
-    Default:
-
+``GalaxySimulationGasHalo`` (external)
+    Controls the properties of the circumgalactic
+    medium used.  Choices are no CGM (0), hydrostatic equilibrium, relatively
+    diffuse CGM (1), power-law entropy profile (2). cored power-law
+    entropy profile (3), power-law entropy profile in hydrostatic
+    equilibrium (4), cored power-law entropy profile in hydrostatic
+    equilibrium (5).  (unitless)
+    Default: 0.
+``GalaxySimulationGasHaloScaleRadius`` (external)
+    Sets the scale radius for the CGM. Unused for GalaxySimulationGasHalo=0. For
+    GalaxySimulationGasHalo=1, this is effectively the NFW scale
+    radius.  For GalaxySimulationGasHalo=2-5, this is the radius where
+    the density is set. (Units are Mpc)
+    Default: 0.001
+``GalaxySimulationGasHaloDensity`` (external)
+    Sets the density normalization for the CGM.  Unused for GalaxySimulationGasHalo=0. For
+    GalaxySimulationGasHalo=1, this effectively controls the maximum
+    CGM density.  For GalaxySimulationGasHalo=2-5, this is the density
+    at the radius set by GalaxySimulationGasHaloScaleRadius.  (Units
+    are CGS density, g/cm^3)
+    Default: 1.67e-27
+``GalaxySimulationGasHaloTemperature`` (external)
+    Sets the temperature normalization of the CGM.  Unused for
+    GalaxySimulationGasHalo=0, 1.  For GalaxySimulationGasHalo=2-5,
+    this is meant to be approximately the virial temperature.  (Units
+    are Kelvin)
+    Default: 1.0e+6
+``GalaxySimulationGasHaloAlpha`` (external)
+    Sets the entropy power law index for GalaxySimulationGasHalo=2.  (Unitless)
+    Default: 0.6667
+``GalaxySimulationGasHaloCoreEntropy`` (external)
+    Sets the core entropy for GalaxySimulationGasHalo=3 and 5.  (Units are
+    in keV cm^2)
+    Default: 5.0
+``GalaxySimulationGasHaloMetallicity`` (external)
+    Sets metallicity for the CGM.  (Units are in Zsun)
+    Default: 0.1
+``GalaxySimulationDiskMetallicityEnhancementFactor`` (external)
+    Sets metallicity of the galactic disk based on the metallicity
+    of the CGM by enhancing it (or diminishing it) by a scaling
+    factor.
+    Default: 3.0
+    
+    
 .. _shearingbox_param:
 
 Shearing Box Simulation (35)

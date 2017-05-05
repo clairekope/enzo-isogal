@@ -2194,13 +2194,21 @@ int zEulerSweep(int j, int NumberOfSubgrids, fluxes *SubgridFluxes[],
 				     int   GasHalo,
 				     float GasHaloScaleRadius,
 				     float GasHaloDensity,
+				     float GasTemperature,
+				     float GasAlpha,
+				     float GasCoreEntropy,
+				     float GasMetallicity,
+				     float DiskMetallicityEnhancementFactor,
 				     float AngularMomentum[MAX_DIMENSION],
 				     float UniformVelocity[MAX_DIMENSION], 
 				     int UseMetallicityField, 
 				     float GalaxySimulationInflowTime,
 				     float GalaxySimulationInflowDensity,
 				     int level,
-				     float GalaxySimulationCR = 0.0 );
+             float GalaxySimulationInitialBfield[MAX_DIMENSION],
+             int GalaxySimulationInitialBfieldTopology,
+             float GalaxySimulationCR = 0.0
+             );
 
   /* Free expansion test */
   int FreeExpansionInitializeGrid(int FreeExpansionFullBox,
