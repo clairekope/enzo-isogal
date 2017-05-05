@@ -821,6 +821,8 @@ c
 c           Error checks to see if the kinetic energy added in the particle frame
 c           matches the values set by the input parameters
 c
+#ifdef BWO_DO_NOT_USE_THIS
+
             if (abs(kin_energy_after - kin_energy_before - kinf*energy)
      &           /(kinf*energy) > 0.01_RKIND .and. 
      &           kinf .ne. 0._RKIND) then
@@ -834,7 +836,7 @@ c
                write(6,*) '%diff',abs(kin_energy_after - 
      &              kin_energy_before)
      &              /(kin_energy_before)
-               ERROR_MESSAGE
+c               ERROR_MESSAGE
             endif
 
             if (abs(mass_after - mass_before 
@@ -852,9 +854,9 @@ c
                write(6,*) '%diff',abs(mass_after - 
      &              mass_before)
      &              /(mass_before)
-               ERROR_MESSAGE
+c               ERROR_MESSAGE
             endif
-
+#endif
 
 
 c
