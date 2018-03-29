@@ -870,6 +870,20 @@ int WriteParameterFile(FILE *fptr, TopGridData &MetaData, char *name = NULL)
           StarMakerMinimumMass);
   fprintf(fptr, "StarMakerMinimumDynamicalTime         = %"GSYM"\n",
           StarMakerMinimumDynamicalTime);
+  fprintf(fptr, "StarMakerVelDivCrit                   = %"ISYM"\n",
+    StarMakerVelDivCrit);
+  fprintf(fptr, "StarMakerSelfBoundCrit                = %"ISYM"\n",
+    StarMakerSelfBoundCrit);
+  fprintf(fptr, "StarMakerThermalCrit                  = %"ISYM"\n",
+    StarMakerThermalCrit);
+  fprintf(fptr, "StarMakerJeansMassCrit                = %"ISYM"\n",
+    StarMakerJeansMassCrit);
+  fprintf(fptr, "StarMakerH2Crit                       = %"ISYM"\n",
+    StarMakerH2Crit);
+  fprintf(fptr, "StarMakerStochasticStarFormation      = %"ISYM"\n",
+    StarMakerStochasticStarFormation);
+  fprintf(fptr, "StarMakerTemperatureThreshold         = %"GSYM"\n",
+    StarMakerTemperatureThreshold);
   fprintf(fptr, "StarMassEjectionFraction              = %"GSYM"\n",
           StarMassEjectionFraction);
   fprintf(fptr, "StarMetalYield                        = %"GSYM"\n",
@@ -888,6 +902,19 @@ int WriteParameterFile(FILE *fptr, TopGridData &MetaData, char *name = NULL)
           StarFeedbackDistRadius);
   fprintf(fptr, "StarFeedbackDistCellStep              = %"ISYM"\n",
           StarFeedbackDistCellStep);
+
+  fprintf(fptr, "StarMakerDensityThreshold             = %"GSYM"\n",
+          StarMakerDensityThreshold);
+  fprintf(fptr, "StarFeedbackDelayTime                 = %"GSYM"\n",
+          StarFeedbackDelayTime);
+  fprintf(fptr, "StarFeedbackDeltaT                    = %"GSYM"\n",
+          StarFeedbackDeltaT);
+  fprintf(fptr, "StarFeedbackUVLuminosity              = %"GSYM"\n",
+          StarFeedbackUVLuminosity);
+  fprintf(fptr, "StarMakerJeansMassCriterion           = %"ISYM"\n",
+          StarMakerJeansMassCriterion);
+  fprintf(fptr, "StarMakerEarlyStellarFeedback         = %"ISYM"\n",
+          StarMakerEarlyStellarFeedback);
   fprintf(fptr, "StarMakerTypeIaSNe                    = %"ISYM"\n",
 	  StarMakerTypeIaSNe);
   fprintf(fptr, "StarMakerTypeIISNeMetalField          = %"ISYM"\n",

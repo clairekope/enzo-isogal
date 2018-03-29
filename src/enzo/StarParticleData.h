@@ -65,6 +65,13 @@ SPEXTERN int StarFeedbackDistTotalCells;
 SPEXTERN float StarFeedbackKineticFraction;
 SPEXTERN float StarMakerExplosionDelayTime;
 
+SPEXTERN float StarMakerDensityThreshold;
+SPEXTERN float StarFeedbackDelayTime;
+SPEXTERN float StarFeedbackDeltaT;
+SPEXTERN float StarFeedbackUVLuminosity;
+SPEXTERN int StarMakerJeansMassCriterion;
+SPEXTERN int StarMakerEarlyStellarFeedback;
+
 SPEXTERN float PopIIIStarMass;
 SPEXTERN int   PopIIIInitialMassFunction;
 SPEXTERN int   PopIIIInitialMassFunctionSeed;
@@ -134,5 +141,13 @@ SPEXTERN float  H2StarMakerColdGasTemperature;
 SPEXTERN float minStarLifetime;
 SPEXTERN FLOAT LastSupernovaTime;
 SPEXTERN float *IMFData;
+
+SPEXTERN int   StarMakerVelDivCrit;
+SPEXTERN int   StarMakerSelfBoundCrit;
+SPEXTERN int   StarMakerThermalCrit;
+SPEXTERN int   StarMakerJeansMassCrit;
+SPEXTERN int   StarMakerH2Crit;
+SPEXTERN int   StarMakerStochasticStarFormation;
+SPEXTERN float StarMakerTemperatureThreshold;
 
 #endif

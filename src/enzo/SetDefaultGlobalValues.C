@@ -562,6 +562,13 @@ int SetDefaultGlobalValues(TopGridData &MetaData)
   StarMakerMassEfficiency          = 1;
   StarMakerMinimumMass             = 1.0e9;        // in solar masses
   StarMakerMinimumDynamicalTime    = 1.0e6;        // in years
+  StarMakerVelDivCrit              = TRUE;
+  StarMakerSelfBoundCrit           = FALSE;
+  StarMakerThermalCrit             = TRUE;
+  StarMakerJeansMassCrit           = TRUE;
+  StarMakerH2Crit                  = FALSE;
+  StarMakerStochasticStarFormation = FALSE;
+  StarMakerTemperatureThreshold    = 100;          // in K
   StarMassEjectionFraction         = 0.25;
   StarMetalYield                   = 0.02;
   StarEnergyToThermalFeedback      = 1.0e-5;
@@ -572,6 +579,12 @@ int SetDefaultGlobalValues(TopGridData &MetaData)
   StarFeedbackDistRadius           = 0;
   StarFeedbackDistCellStep         = 0;
   StarFeedbackDistTotalCells       = 1;
+  StarMakerDensityThreshold        = 1e-25; // proper g/cm^3
+  StarFeedbackDelayTime            = 3.e7; // yr
+  StarFeedbackDeltaT               = 1.e7; // K
+  StarFeedbackUVLuminosity         = 1.6e36; // erg/s/Msun (Stinson et al. 2013)
+  StarMakerJeansMassCriterion      = TRUE;
+  StarMakerEarlyStellarFeedback    = FALSE;
   MultiMetals                      = FALSE;
   NumberOfParticleAttributes       = INT_UNDEFINED;
   ParticleTypeInFile               = TRUE;
