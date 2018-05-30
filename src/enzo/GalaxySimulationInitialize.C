@@ -92,7 +92,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 
   /* set default parameters */
 
-  float GalaxySimulationGasMass,
+  FLOAT GalaxySimulationGasMass,
     GalaxySimulationGalaxyMass,
     GalaxySimulationCR,
     GalaxySimulationDiskTemperature,
@@ -109,26 +109,26 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
     GalaxySimulationTruncationRadius;
 
 
-  float GalaxySimulationInitialTemperature,
-    GalaxySimulationDarkMatterConcentrationParameter,
-    GalaxySimulationInflowTime,
-    GalaxySimulationInflowDensity;
-	
-	int GalaxySimulationGasHalo;
-	float GalaxySimulationGasHaloScaleRadius,
-	  GalaxySimulationGasHaloDensity,
-	  GalaxySimulationGasHaloTemperature,
-	  GalaxySimulationGasHaloAlpha,
-	  GalaxySimulationGasHaloCoreEntropy,
-	  GalaxySimulationGasHaloMetallicity,
-	  GalaxySimulationDiskMetallicityEnhancementFactor;
-	
-	
+  FLOAT GalaxySimulationInitialTemperature,
+        GalaxySimulationDarkMatterConcentrationParameter,
+        GalaxySimulationInflowTime,
+        GalaxySimulationInflowDensity;
+
+  int GalaxySimulationGasHalo;
+  FLOAT GalaxySimulationGasHaloScaleRadius,
+        GalaxySimulationGasHaloDensity,
+        GalaxySimulationGasHaloTemperature,
+        GalaxySimulationGasHaloAlpha,
+        GalaxySimulationGasHaloCoreEntropy,
+        GalaxySimulationGasHaloMetallicity,
+        GalaxySimulationDiskMetallicityEnhancementFactor;
+
+
   int   GalaxySimulationRefineAtStart,
     GalaxySimulationUseMetallicityField;
  
   FLOAT LeftEdge[MAX_DIMENSION], RightEdge[MAX_DIMENSION];
-  float GalaxySimulationInitialBfield[3] = {0.0, 0.0, 0.0};
+  FLOAT GalaxySimulationInitialBfield[3] = {0.0, 0.0, 0.0};
   int GalaxySimulationInitialBfieldTopology= 0; //Uniform cartesian
 
   /* Default Values */

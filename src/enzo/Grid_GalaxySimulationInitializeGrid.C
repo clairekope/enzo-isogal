@@ -105,35 +105,34 @@ double halo_galmass_at_r(double r);
 void halo_init(void);
 void halo_clean(void);
 
-
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
-           float GalaxyMass,
-           float GasMass,
+           FLOAT GalaxyMass,
+           FLOAT GasMass,
            FLOAT DiskPosition[MAX_DIMENSION], 
            FLOAT ScaleHeightz,
            FLOAT ScaleHeightR,
            FLOAT GalaxyTruncationRadius, 
-           float DMConcentration,
-           float DiskTemperature,
-           float InitialTemperature,
-           float UniformDensity,
+           FLOAT DMConcentration,
+           FLOAT DiskTemperature,
+           FLOAT InitialTemperature,
+           FLOAT UniformDensity,
            int   GasHalo,
-           float GasHaloScaleRadius,
-           float GasHaloDensity,
-           float GasHaloTemperature,
-           float GasHaloAlpha,
-           float GasHaloCoreEntropy,
-           float GasHaloMetallicity,
-           float DiskMetallicityEnhancementFactor,
-           float AngularMomentum[MAX_DIMENSION],
-           float UniformVelocity[MAX_DIMENSION], 
+           FLOAT GasHaloScaleRadius,
+           FLOAT GasHaloDensity,
+           FLOAT GasHaloTemperature,
+           FLOAT GasHaloAlpha,
+           FLOAT GasHaloCoreEntropy,
+           FLOAT GasHaloMetallicity,
+           FLOAT DiskMetallicityEnhancementFactor,
+           FLOAT AngularMomentum[MAX_DIMENSION],
+           FLOAT UniformVelocity[MAX_DIMENSION], 
            int UseMetallicityField, 
-           float GalaxySimulationInflowTime,
-           float GalaxySimulationInflowDensity,
+           FLOAT GalaxySimulationInflowTime,
+           FLOAT GalaxySimulationInflowDensity,
            int level,
-           float GalaxySimulationInitialBfield[MAX_DIMENSION],
+           FLOAT GalaxySimulationInitialBfield[MAX_DIMENSION],
            int GalaxySimulationInitialBfieldTopology,
-           float GalaxySimulationCR
+           FLOAT GalaxySimulationCR
           )
 {
  /* declarations */
@@ -143,6 +142,7 @@ int DeNum, HINum, HIINum, HeINum, HeIINum, HeIIINum, HMNum, H2INum,
     H2IINum, DINum, DIINum, HDINum, B1Num, B2Num, B3Num, PhiNum;
 float DiskDensity, DiskVelocityMag;
 int CRNum, DensNum;
+double vmag;
 
 /* global-scope variables for disk potential functions (would be better if not global) */
 
@@ -472,21 +472,26 @@ for (k = 0; k < GridDimension[2]; k++)
 
     if (UseMetallicityField) {
       BaryonField[MetalNum][n] = initial_metallicity 
-                                 * CoolData.SolarMetalFractionByMass * density;
+                                 * CoolData.SolarMetalFractionByMass 
+                                 * density;
     }
 
-    /* This is wrong as it sets every cell for ever iteration of the loop.
-       it should be using index "n" and not include the for loop.
-       It should probably also be scaled with density in some way to be
-       a proper metallicity -- DWS */
+    /* This should probably be scaled with density in some way to be
+       a proper metallicity -- DWS (loop redundancy addressed by CEK) */
     if (StarMakerTypeIaSNe)
-      for (i = 0; i < size; i++)
-        BaryonField[MetalIaNum][i] = 1.0e-10;
+      BaryonField[MetalIaNum][n] = 1.0e-10;
 
     /* Set Velocities. */
-
-    for (dim = 0; dim < GridRank; dim++)
-      BaryonField[vel+dim][n] = Velocity[dim] + UniformVelocity[dim];
+    // This is where we should set up the rotating Halo
+    /*if (GalaxySimulationGasHaloRotation){
+      vmag = GalaxySimulationGasHaloRotationScaleVelocity
+           * POW(r/GalaxySimulationGasHaloRotationScaleRadius,
+                 GalaxySimulationGasHaloRotationIndex)
+                 
+    } else {*/
+      for (dim = 0; dim < GridRank; dim++)
+        BaryonField[vel+dim][n] = Velocity[dim] + UniformVelocity[dim];
+    //}
 
     /* Set energy (thermal and then total if necessary). */
 
