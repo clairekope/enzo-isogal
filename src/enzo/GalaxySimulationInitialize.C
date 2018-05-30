@@ -122,6 +122,11 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
         GalaxySimulationGasHaloCoreEntropy,
         GalaxySimulationGasHaloMetallicity,
         GalaxySimulationDiskMetallicityEnhancementFactor;
+        
+  int GalaxySimulationGasHaloRotation;
+  FLOAT GalaxySimulationGasHaloRotationScaleVelocity,
+        GalaxySimulationGasHaloRotationScaleRadius,
+        GalaxySimulationGasHaloRotationIndex;
 
 
   int   GalaxySimulationRefineAtStart,
@@ -152,6 +157,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasHaloAlpha       = 2.0/3.0;  // unitless
   GalaxySimulationGasHaloCoreEntropy = 5.0;  // keV cm^2
   GalaxySimulationGasHaloMetallicity = 0.1; // Zsun
+  GalaxySimulationGasHaloRotation    = 0; // off
+  GalaxySimulationGasHaloRotationScaleVelocity = 180.0; // km/s
+  GalaxySimulationGasHaloRotationScaleRadius   = 10.0; // kpc
+  GalaxySimulationGasHaloRotationIndex         = 0.0; // unitless 
   GalaxySimulationDiskMetallicityEnhancementFactor = 3.0; // w.r.t to halo metallicity
   GalaxySimulationInflowTime         = -1;
   GalaxySimulationInflowDensity      = 0;
@@ -221,6 +230,14 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationGasHaloCoreEntropy);
     ret += sscanf(line, "GalaxySimulationGasHaloMetallicity = %"FSYM,
 		  &GalaxySimulationGasHaloMetallicity);
+    ret += sscanf(line, "GalaxySimulationGasHaloRotation = %"ISYM,
+		  &GalaxySimulationGasHaloRotation);
+    ret += sscanf(line, "GalaxySimulationGasHaloRotationScaleVelocity = %"FSYM,
+		  &GalaxySimulationGasHaloRotationScaleVelocity);
+    ret += sscanf(line, "GalaxySimulationGasHaloRotationScaleRadius = %"FSYM,
+		  &GalaxySimulationGasHaloRotationScaleRadius);
+    ret += sscanf(line, "GalaxySimulationGasHaloRotationIndex = %"FSYM,
+		  &GalaxySimulationGasHaloRotationIndex);
     ret += sscanf(line, "GalaxySimulationDiskMetallicityEnhancementFactor = %"FSYM,
 		  &GalaxySimulationDiskMetallicityEnhancementFactor);
     ret += sscanf(line, "GalaxySimulationInflowTime = %"FSYM,
@@ -259,6 +276,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
           GalaxySimulationInitialBfield[dim] /=MagneticUnits;
       }
   }
+  
+  /* Convert RPS parameters to code units */
   GalaxySimulationRPSWindDensity = GalaxySimulationRPSWindDensity/DensityUnits;
   GalaxySimulationRPSWindPressure = GalaxySimulationRPSWindPressure/DensityUnits/LengthUnits/LengthUnits*TimeUnits*TimeUnits;
   GalaxySimulationRPSWindVelocity[0] = GalaxySimulationRPSWindVelocity[0]/LengthUnits*TimeUnits;
@@ -293,6 +312,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 						       GalaxySimulationGasHaloAlpha,
 						       GalaxySimulationGasHaloCoreEntropy,
 						       GalaxySimulationGasHaloMetallicity,
+                   GalaxySimulationGasHaloRotation,
+                   GalaxySimulationGasHaloRotationScaleVelocity,
+                   GalaxySimulationGasHaloRotationScaleRadius,
+                   GalaxySimulationGasHaloRotationIndex,
 						       GalaxySimulationDiskMetallicityEnhancementFactor,
 						       GalaxySimulationAngularMomentum,
 						       GalaxySimulationUniformVelocity,
@@ -372,6 +395,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 							   GalaxySimulationGasHaloAlpha,
 							   GalaxySimulationGasHaloCoreEntropy,
 							   GalaxySimulationGasHaloMetallicity,
+                 GalaxySimulationGasHaloRotation,
+                 GalaxySimulationGasHaloRotationScaleVelocity,
+                 GalaxySimulationGasHaloRotationScaleRadius,
+                 GalaxySimulationGasHaloRotationIndex,
 							   GalaxySimulationDiskMetallicityEnhancementFactor,
 							   GalaxySimulationAngularMomentum,
 							   GalaxySimulationUniformVelocity,
