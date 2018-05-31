@@ -289,8 +289,8 @@ this->AllocateGrids();
 //      BaryonField[MetalNum][i] = 1.0e-10;
  
 /* Loop over the mesh. */
-float density, dens1, Velocity[MAX_DIMENSION];
-FLOAT temperature, temp1, init_temp, initial_metallicity;
+float density, disk_dens, Velocity[MAX_DIMENSION];
+FLOAT temperature, disk_temp, init_temp, initial_metallicity;
 FLOAT r, x, y = 0, z = 0;
 int n = 0;
 
@@ -324,48 +324,49 @@ for (k = 0; k < GridDimension[2]; k++)
     r = max(r, 0.1*CellWidth[0][0]);
 
     density = HaloGasDensity(r)/DensityUnits;
-    temperature = temp1 = init_temp = HaloGasTemperature(r);
+    temperature = disk_temp = init_temp = HaloGasTemperature(r);
 
-    if (r < DiskRadius) {
 
-      FLOAT xpos, ypos, zpos, zheight, drad; 
-      float CellMass;
-      FLOAT xhat[3];
-      FLOAT yhat[3];
+    FLOAT xpos, ypos, zpos, zheight, drad; 
+    float CellMass;
+    FLOAT xhat[3];
+    FLOAT yhat[3];
 
-      /* Loop over dims if using Zeus (since vel's face-centered). */
+    /* Loop over dims if using Zeus (since vel's face-centered). */
 
-      for (dim = 0; dim < 1+(HydroMethod == Zeus_Hydro ? GridRank : 0);
-           dim++) {
+    for (dim = 0; dim < 1+(HydroMethod == Zeus_Hydro ? GridRank : 0);
+         dim++) {
 
-        /* Compute position. */
+      /* Compute position. */
 
-        xpos = x-DiskPosition[0]-(dim == 1 ? 0.5*CellWidth[0][0] : 0.0);
-        ypos = y-DiskPosition[1]-(dim == 2 ? 0.5*CellWidth[1][0] : 0.0);
-        zpos = z-DiskPosition[2]-(dim == 3 ? 0.5*CellWidth[2][0] : 0.0);
+      xpos = x-DiskPosition[0]-(dim == 1 ? 0.5*CellWidth[0][0] : 0.0);
+      ypos = y-DiskPosition[1]-(dim == 2 ? 0.5*CellWidth[1][0] : 0.0);
+      zpos = z-DiskPosition[2]-(dim == 3 ? 0.5*CellWidth[2][0] : 0.0);
 
-        /* Compute z and r_perp (AngularMomentum is angular momentum 
-           and must have unit length). */    
+      /* Compute z and r_perp (AngularMomentum is angular momentum 
+         and must have unit length). */    
 
-        /* magnitude of z = r.L in L direction */
+      /* magnitude of z = r.L in L direction */
 
-        zheight = AngularMomentum[0]*xpos + 
-                  AngularMomentum[1]*ypos +
-                  AngularMomentum[2]*zpos;
+      zheight = AngularMomentum[0]*xpos + 
+                AngularMomentum[1]*ypos +
+                AngularMomentum[2]*zpos;
 
-        /* position in plane of disk */
+      /* position in plane of disk */
 
-        xhat[0] = xpos - zheight*AngularMomentum[0];
-        xhat[1] = ypos - zheight*AngularMomentum[1];
-        xhat[2] = zpos - zheight*AngularMomentum[2];
-        drad = sqrt(xhat[0]*xhat[0] + xhat[1]*xhat[1] + xhat[2]*xhat[2]);
-        drcyl = drad;
+      xhat[0] = xpos - zheight*AngularMomentum[0];
+      xhat[1] = ypos - zheight*AngularMomentum[1];
+      xhat[2] = zpos - zheight*AngularMomentum[2];
+      drad = sqrt(xhat[0]*xhat[0] + xhat[1]*xhat[1] + xhat[2]*xhat[2]);
+      drcyl = drad;
 
-        /* Normalize the vector r_perp = unit vector pointing along plane of disk */
+      /* Normalize the vector r_perp = unit vector pointing along plane of disk */
 
-        xhat[0] = xhat[0]/drad;
-        xhat[1] = xhat[1]/drad;
-        xhat[2] = xhat[2]/drad;
+      xhat[0] = xhat[0]/drad;
+      xhat[1] = xhat[1]/drad;
+      xhat[2] = xhat[2]/drad;
+
+      if (r < DiskRadius) {
 
         /* Find another vector perpendicular to r_perp and AngularMomentum */
 
@@ -392,7 +393,7 @@ for (k = 0; k < GridDimension[2]; k++)
           }
 
         if( fabs(drcyl*LengthUnits/Mpc) > TruncRadius ){
-          dens1 = 0.0;
+          disk_dens = 0.0;
           break;
         }
 
@@ -412,12 +413,12 @@ for (k = 0; k < GridDimension[2]; k++)
                                 ScaleHeightR*Mpc, ScaleHeightz*Mpc, 
                                 CellWidth[0][0]*LengthUnits);
 
-          dens1 = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
+          disk_dens = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
 
           DiskVelocityMag = DiskPotentialCircularVelocity(
                                                     CellWidth[0][0],
                                                     zheight*LengthUnits,
-                                                    dens1, temp1);
+                                                    disk_dens, disk_temp);
         }
         if (PointSourceGravity*DiskGravity != FALSE ) 
           ENZO_FAIL("Cannot activate both PointSource and Disk gravity options for Isolated Galaxy");
@@ -429,12 +430,12 @@ for (k = 0; k < GridDimension[2]; k++)
                                 DiskDensity*DensityUnits,
                                 ScaleHeightR*Mpc, ScaleHeightz*Mpc,
                                 CellWidth[0][0]*LengthUnits);
-          dens1 = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
+          disk_dens = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
         }
 
         /* If we're above the disk, then exit. */
 
-        if (dens1 < density)
+        if (disk_dens < density)
           break;
 
         /* Compute velocity magnitude (divided by drad). 
@@ -452,23 +453,39 @@ for (k = 0; k < GridDimension[2]; k++)
           Velocity[2] = DiskVelocityMag*(AngularMomentum[0]*xhat[1] -
                                          AngularMomentum[1]*xhat[0]);
 
-      } // end: loop over dims
+      } // end: if (r < DiskRadius)
 
-        /* If the density is larger than the background (or the previous
-           disk), then set the velocity. */
-
-      if (dens1 > density && fabs(drcyl*LengthUnits/Mpc) <= TruncRadius){
-        density = dens1;
-        if (temp1 == init_temp)
-          temp1 = DiskTemperature;
-        temperature = temp1;
+      /* Replace CGM ("Halo") defaults with disk if dense enough; i.e.
+       * replace 'density', 'temperature', 'initial_metallicity', and
+       * 'Velocity' (which are currently set to CGM values) with their
+       * appropriate disk values */
+       
+      if (disk_dens > density && fabs(drcyl*LengthUnits/Mpc) <= TruncRadius){
+        density = disk_dens;
+        
+        /* temperature, disk_temp & init_temp start at the temp returned
+         * by HaloGasTemperature(r). If (r < DiskRadius),
+         * disk_temp may be modified by DiskPotentialCircularVelocity.
+         * If it *hasn't* been modified, set it to DiskTemperature.
+         * Then, replace 'temperature' with 'disk_temp' and impose
+         * a ceiling */
+        if (disk_temp == init_temp)
+          disk_temp = DiskTemperature; 
+        temperature = disk_temp;
         if( temperature > 1.0e7 )
           temperature = init_temp;
-        if( UseMetallicityField ) // Here we're setting the disk to be X times more enriched -- DWS
+        
+        /* Here we're setting the disk to be X times more enriched -- DWS */
+        if( UseMetallicityField )
           initial_metallicity *= GalaxySimulationDiskMetallicityEnhancementFactor;
+          
+        /* Replace default/CGM velocity with disk velocity */
+        //Velocity[0] = disk_vel[0];
+        //Velocity[1] = disk_vel[1];
+        //Velocity[2] = disk_vel[2];
       }
 
-    } // end: if (r < DiskRadius)
+    } // end: loop over dims 
 
     /* Set density. */
 
