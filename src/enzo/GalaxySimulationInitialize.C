@@ -277,6 +277,11 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
       }
   }
   
+  printf("Vel %"FSYM" Rad %"FSYM" Index %"FSYM"\n", 
+         GalaxySimulationGasHaloRotationScaleVelocity,
+         GalaxySimulationGasHaloRotationScaleRadius,
+         GalaxySimulationGasHaloRotationIndex);
+         
   /* Convert RPS parameters to code units */
   GalaxySimulationRPSWindDensity = GalaxySimulationRPSWindDensity/DensityUnits;
   GalaxySimulationRPSWindPressure = GalaxySimulationRPSWindPressure/DensityUnits/LengthUnits/LengthUnits*TimeUnits*TimeUnits;
@@ -312,10 +317,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 						       GalaxySimulationGasHaloAlpha,
 						       GalaxySimulationGasHaloCoreEntropy,
 						       GalaxySimulationGasHaloMetallicity,
-                   GalaxySimulationGasHaloRotation,
-                   GalaxySimulationGasHaloRotationScaleVelocity,
-                   GalaxySimulationGasHaloRotationScaleRadius,
-                   GalaxySimulationGasHaloRotationIndex,
+						       GalaxySimulationGasHaloRotation,
+						       GalaxySimulationGasHaloRotationScaleVelocity,
+						       GalaxySimulationGasHaloRotationScaleRadius,
+						       GalaxySimulationGasHaloRotationIndex,
 						       GalaxySimulationDiskMetallicityEnhancementFactor,
 						       GalaxySimulationAngularMomentum,
 						       GalaxySimulationUniformVelocity,
@@ -395,10 +400,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 							   GalaxySimulationGasHaloAlpha,
 							   GalaxySimulationGasHaloCoreEntropy,
 							   GalaxySimulationGasHaloMetallicity,
-                 GalaxySimulationGasHaloRotation,
-                 GalaxySimulationGasHaloRotationScaleVelocity,
-                 GalaxySimulationGasHaloRotationScaleRadius,
-                 GalaxySimulationGasHaloRotationIndex,
+							   GalaxySimulationGasHaloRotation,
+							   GalaxySimulationGasHaloRotationScaleVelocity,
+							   GalaxySimulationGasHaloRotationScaleRadius,
+							   GalaxySimulationGasHaloRotationIndex,
 							   GalaxySimulationDiskMetallicityEnhancementFactor,
 							   GalaxySimulationAngularMomentum,
 							   GalaxySimulationUniformVelocity,

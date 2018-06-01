@@ -33,6 +33,8 @@
 #define pi (3.14159)
 #define mh (1.67e-24)           //Mass of Hydrogen [g]
 #define kboltz (1.381e-16)      //Boltzmann's Constant [ergK-1]
+#define CM_PER_KM (1.0e5)
+#define CM_PER_KPC (3.0856e21)
 
 int GetUnits(float *DensityUnits, float *LengthUnits,
              float *TemperatureUnits, float *TimeUnits,
@@ -124,9 +126,9 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT GasHaloCoreEntropy,
            FLOAT GasHaloMetallicity,
            int   UseHaloRotation,
-				   FLOAT RotationScaleVelocity,
-				   FLOAT RotationScaleRadius,
-				   FLOAT RotationPowerLawIndex,
+           FLOAT RotationScaleVelocity,
+           FLOAT RotationScaleRadius,
+           FLOAT RotationPowerLawIndex,
            FLOAT DiskMetallicityEnhancementFactor,
            FLOAT AngularMomentum[MAX_DIMENSION],
            FLOAT UniformVelocity[MAX_DIMENSION], 
@@ -146,7 +148,6 @@ int DeNum, HINum, HIINum, HeINum, HeIINum, HeIIINum, HMNum, H2INum,
     H2IINum, DINum, DIINum, HDINum, B1Num, B2Num, B3Num, PhiNum;
 float DiskDensity, DiskVelocityMag;
 int CRNum, DensNum;
-double vmag;
 
 /* global-scope variables for disk potential functions (would be better if not global) */
 
@@ -272,6 +273,13 @@ if (GalaxySimulationInflowTime > 0.0){
   TimeActionTime[0] = GalaxySimulationInflowTime*1e9/TimeUnits;
 }
 
+/* Scale gas halo rotation quantities to code units.
+ * gas halo rotation variable are NOT global */
+RotationScaleVelocity *= CM_PER_KM; // km/s to cm/s
+RotationScaleVelocity /= LengthUnits/TimeUnits; // cm/s to code length/code time
+RotationScaleRadius *= CM_PER_KPC;  // kpc to cm
+RotationScaleRadius /= LengthUnits;  // cm to code length
+
 /* compute size of fields */
 size = 1;
 for (dim = 0; dim < GridRank; dim++)
@@ -289,9 +297,10 @@ this->AllocateGrids();
 //      BaryonField[MetalNum][i] = 1.0e-10;
  
 /* Loop over the mesh. */
-float density, disk_dens, Velocity[MAX_DIMENSION];
+float density, disk_dens;
+FLOAT halo_vmag, disk_vel[MAX_DIMENSION], Velocity[MAX_DIMENSION];
 FLOAT temperature, disk_temp, init_temp, initial_metallicity;
-FLOAT r, x, y = 0, z = 0;
+FLOAT r_sph, r_cyl, x, y = 0, z = 0;
 int n = 0;
 
 for (k = 0; k < GridDimension[2]; k++)
@@ -300,7 +309,7 @@ for (k = 0; k < GridDimension[2]; k++)
 
     if (UseMetallicityField) {
       /* Set a background metallicity value that will scale with density.
-      If the cell is in the disk, this will be increased by a factor
+      If the cell is in the disk, this wifll be increased by a factor
       of 3.  This should really be a parameter that is read in -- DWS */ 
       initial_metallicity = GalaxySimulationGasHaloMetallicity;
     }
@@ -315,21 +324,25 @@ for (k = 0; k < GridDimension[2]; k++)
 
     for (dim = 0; dim < MAX_DIMENSION; dim++)
       Velocity[dim] = 0;
+      disk_vel[dim] = 0;
 
     /* Find distance from center. */
 
-    r = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
-      POW(fabs(y-DiskPosition[1]), 2) +
-      POW(fabs(z-DiskPosition[2]), 2) );
-    r = max(r, 0.1*CellWidth[0][0]);
+    r_sph = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
+                 POW(fabs(y-DiskPosition[1]), 2) +
+                 POW(fabs(z-DiskPosition[2]), 2) );
+    r_sph = max(r_sph, 0.1*CellWidth[0][0]);
+    
+    r_cyl = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
+                 POW(fabs(y-DiskPosition[1]), 2) );
 
-    density = HaloGasDensity(r)/DensityUnits;
-    temperature = disk_temp = init_temp = HaloGasTemperature(r);
+    density = HaloGasDensity(r_sph)/DensityUnits;
+    temperature = disk_temp = init_temp = HaloGasTemperature(r_sph);
 
 
     FLOAT xpos, ypos, zpos, zheight, drad; 
     float CellMass;
-    FLOAT xhat[3];
+    FLOAT rp_hat[3];
     FLOAT yhat[3];
 
     /* Loop over dims if using Zeus (since vel's face-centered). */
@@ -354,34 +367,55 @@ for (k = 0; k < GridDimension[2]; k++)
 
       /* position in plane of disk */
 
-      xhat[0] = xpos - zheight*AngularMomentum[0];
-      xhat[1] = ypos - zheight*AngularMomentum[1];
-      xhat[2] = zpos - zheight*AngularMomentum[2];
-      drad = sqrt(xhat[0]*xhat[0] + xhat[1]*xhat[1] + xhat[2]*xhat[2]);
+      rp_hat[0] = xpos - zheight*AngularMomentum[0];
+      rp_hat[1] = ypos - zheight*AngularMomentum[1];
+      rp_hat[2] = zpos - zheight*AngularMomentum[2];
+      drad = sqrt(rp_hat[0]*rp_hat[0] + rp_hat[1]*rp_hat[1] + rp_hat[2]*rp_hat[2]);
       drcyl = drad;
 
       /* Normalize the vector r_perp = unit vector pointing along plane of disk */
 
-      xhat[0] = xhat[0]/drad;
-      xhat[1] = xhat[1]/drad;
-      xhat[2] = xhat[2]/drad;
-
-      if (r < DiskRadius) {
+      rp_hat[0] = rp_hat[0]/drad;
+      rp_hat[1] = rp_hat[1]/drad;
+      rp_hat[2] = rp_hat[2]/drad;
+      
+      /* If requested, calculate velocity for CGM halo.
+       * Will be replaced wtih disk velocity later if appropriate */
+      if (UseHaloRotation){
+        halo_vmag = RotationScaleVelocity*POW(r_cyl/RotationScaleRadius,
+                                              RotationPowerLawIndex);
+        Velocity[0] = halo_vmag * (AngularMomentum[1]*rp_hat[2] -
+                                   AngularMomentum[2]*rp_hat[1]);
+        Velocity[1] = halo_vmag * (AngularMomentum[2]*rp_hat[0] -
+                                   AngularMomentum[0]*rp_hat[2]);
+        Velocity[2] = halo_vmag * (AngularMomentum[0]*rp_hat[1] -
+                                   AngularMomentum[1]*rp_hat[0]);
+      }
+      
+      if (r_sph < DiskRadius) {
 
         /* Find another vector perpendicular to r_perp and AngularMomentum */
 
-        yhat[0] = AngularMomentum[1]*xhat[2] - AngularMomentum[2]*xhat[1];
-        yhat[1] = AngularMomentum[2]*xhat[0] - AngularMomentum[0]*xhat[2];
-        yhat[2] = AngularMomentum[0]*xhat[1] - AngularMomentum[1]*xhat[0];
+        yhat[0] = AngularMomentum[1]*rp_hat[2] - AngularMomentum[2]*rp_hat[1];
+        yhat[1] = AngularMomentum[2]*rp_hat[0] - AngularMomentum[0]*rp_hat[2];
+        yhat[2] = AngularMomentum[0]*rp_hat[1] - AngularMomentum[1]*rp_hat[0];
 
         /* generate rotation matrix */
         FLOAT inv[3][3],temp;
         int i,j;
 
         // matrix of basis vectors in coordinate system defined by the galaxy
-        inv[0][0] = xhat[0]; inv[0][1] = yhat[0]; inv[0][2] = AngularMomentum[0];
-        inv[1][0] = xhat[1]; inv[1][1] = yhat[1]; inv[1][2] = AngularMomentum[1];
-        inv[2][0] = xhat[2]; inv[2][1] = yhat[2]; inv[2][2] = AngularMomentum[2];
+        inv[0][0] = rp_hat[0];
+        inv[0][1] = yhat[0];
+        inv[0][2] = AngularMomentum[0];
+        
+        inv[1][0] = rp_hat[1];
+        inv[1][1] = yhat[1];
+        inv[1][2] = AngularMomentum[1];
+        
+        inv[2][0] = rp_hat[2];
+        inv[2][1] = yhat[2];
+        inv[2][2] = AngularMomentum[2];
 
         // Matrix is orthogonal by construction so inverse = transpose
 
@@ -444,16 +478,16 @@ for (k = 0; k < GridDimension[2]; k++)
 
         /* Compute velocty: L x r_perp. */
         if (dim == 0 || dim == 1)
-          Velocity[0] = DiskVelocityMag*(AngularMomentum[1]*xhat[2] -
-                                         AngularMomentum[2]*xhat[1]);
+          disk_vel[0] = DiskVelocityMag*(AngularMomentum[1]*rp_hat[2] -
+                                         AngularMomentum[2]*rp_hat[1]);
         if (dim == 0 || dim == 2)
-          Velocity[1] = DiskVelocityMag*(AngularMomentum[2]*xhat[0] -
-                                         AngularMomentum[0]*xhat[2]);
+          disk_vel[1] = DiskVelocityMag*(AngularMomentum[2]*rp_hat[0] -
+                                         AngularMomentum[0]*rp_hat[2]);
         if (dim == 0 || dim == 3)
-          Velocity[2] = DiskVelocityMag*(AngularMomentum[0]*xhat[1] -
-                                         AngularMomentum[1]*xhat[0]);
+          disk_vel[2] = DiskVelocityMag*(AngularMomentum[0]*rp_hat[1] -
+                                         AngularMomentum[1]*rp_hat[0]);
 
-      } // end: if (r < DiskRadius)
+      } // end: if (r_sph < DiskRadius)
 
       /* Replace CGM ("Halo") defaults with disk if dense enough; i.e.
        * replace 'density', 'temperature', 'initial_metallicity', and
@@ -464,7 +498,7 @@ for (k = 0; k < GridDimension[2]; k++)
         density = disk_dens;
         
         /* temperature, disk_temp & init_temp start at the temp returned
-         * by HaloGasTemperature(r). If (r < DiskRadius),
+         * by HaloGasTemperature(r_sph). If (r_sph < DiskRadius),
          * disk_temp may be modified by DiskPotentialCircularVelocity.
          * If it *hasn't* been modified, set it to DiskTemperature.
          * Then, replace 'temperature' with 'disk_temp' and impose
@@ -480,9 +514,9 @@ for (k = 0; k < GridDimension[2]; k++)
           initial_metallicity *= GalaxySimulationDiskMetallicityEnhancementFactor;
           
         /* Replace default/CGM velocity with disk velocity */
-        //Velocity[0] = disk_vel[0];
-        //Velocity[1] = disk_vel[1];
-        //Velocity[2] = disk_vel[2];
+        Velocity[0] = disk_vel[0];
+        Velocity[1] = disk_vel[1];
+        Velocity[2] = disk_vel[2];
       }
 
     } // end: loop over dims 
@@ -501,18 +535,9 @@ for (k = 0; k < GridDimension[2]; k++)
        a proper metallicity -- DWS (loop redundancy addressed by CEK) */
     if (StarMakerTypeIaSNe)
       BaryonField[MetalIaNum][n] = 1.0e-10;
-
-    /* Set Velocities. */
-    // This is where we should set up the rotating Halo
-    /*if (GalaxySimulationGasHaloRotation){
-      vmag = GalaxySimulationGasHaloRotationScaleVelocity
-           * POW(r/GalaxySimulationGasHaloRotationScaleRadius,
-                 GalaxySimulationGasHaloRotationIndex)
-                 
-    } else {*/
-      for (dim = 0; dim < GridRank; dim++)
-        BaryonField[vel+dim][n] = Velocity[dim] + UniformVelocity[dim];
-    //}
+   
+    for (dim = 0; dim < GridRank; dim++)
+      BaryonField[vel+dim][n] = Velocity[dim] + UniformVelocity[dim];
 
     /* Set energy (thermal and then total if necessary). */
 
