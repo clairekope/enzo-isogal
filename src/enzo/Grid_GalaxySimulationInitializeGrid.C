@@ -279,6 +279,10 @@ RotationScaleVelocity *= CM_PER_KM; // km/s to cm/s
 RotationScaleVelocity /= LengthUnits/TimeUnits; // cm/s to code length/code time
 RotationScaleRadius *= CM_PER_KPC;  // kpc to cm
 RotationScaleRadius /= LengthUnits;  // cm to code length
+double rho_crit = 1.8788e-29*0.49;
+double Rvir = pow(3.0/(4.0*3.14159)*(GalaxyMass*SolarMass)/(200.*rho_crit),1./3.);
+Rvir /= LengthUnits;
+printf("Rvir %"FSYM"\n",Rvir);
 
 /* compute size of fields */
 size = 1;
@@ -382,8 +386,12 @@ for (k = 0; k < GridDimension[2]; k++)
       /* If requested, calculate velocity for CGM halo.
        * Will be replaced wtih disk velocity later if appropriate */
       if (UseHaloRotation){
-        halo_vmag = RotationScaleVelocity*POW(r_cyl/RotationScaleRadius,
-                                              RotationPowerLawIndex);
+        if (r_cyl < Rvir)
+          halo_vmag = RotationScaleVelocity 
+                      * POW(r_cyl/RotationScaleRadius, 
+                            RotationPowerLawIndex);
+        else
+          halo_vmag = 0;
         Velocity[0] = halo_vmag * (AngularMomentum[1]*rp_hat[2] -
                                    AngularMomentum[2]*rp_hat[1]);
         Velocity[1] = halo_vmag * (AngularMomentum[2]*rp_hat[0] -

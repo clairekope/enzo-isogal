@@ -276,12 +276,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
           GalaxySimulationInitialBfield[dim] /=MagneticUnits;
       }
   }
-  
-  printf("Vel %"FSYM" Rad %"FSYM" Index %"FSYM"\n", 
-         GalaxySimulationGasHaloRotationScaleVelocity,
-         GalaxySimulationGasHaloRotationScaleRadius,
-         GalaxySimulationGasHaloRotationIndex);
-         
+           
   /* Convert RPS parameters to code units */
   GalaxySimulationRPSWindDensity = GalaxySimulationRPSWindDensity/DensityUnits;
   GalaxySimulationRPSWindPressure = GalaxySimulationRPSWindPressure/DensityUnits/LengthUnits/LengthUnits*TimeUnits*TimeUnits;
