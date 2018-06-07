@@ -100,7 +100,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
     GalaxySimulationUniformVelocity[MAX_DIMENSION],
     GalaxySimulationUniformDensity,
     GalaxySimulationUniformCR,
-    GalaxySimulationUniformEnergy;
+    GalaxySimulationUniformEnergy,
+    GalaxySimulationChemEquilibrationTime;
 
   FLOAT GalaxySimulationDiskRadius,
     GalaxySimulationDiskPosition[MAX_DIMENSION],
@@ -151,6 +152,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasMass            = 4.0e10;
   GalaxySimulationGalaxyMass         = 1.0e12;
   GalaxySimulationDiskTemperature    = 1000.0;
+  GalaxySimulationChemEquilibrationTime = 0; // cgs
   GalaxySimulationGasHalo            = 0; // uniform halo w/ densicm and UniformTemperature
   GalaxySimulationGasHaloScaleRadius = .001; // Mpc
   GalaxySimulationGasHaloDensity     = 1.8e-27; // cgs
@@ -218,6 +220,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationDarkMatterConcentrationParameter);
     ret += sscanf(line, "GalaxySimulationDiskTemperature = %"FSYM,
 		  &GalaxySimulationDiskTemperature);
+    ret += sscanf(line, "GalaxySimulationChemEquilibrationTime = %"FSYM,
+		  &GalaxySimulationChemEquilibrationTime);
     ret += sscanf(line, "GalaxySimulationGasHalo = %"ISYM,
 		  &GalaxySimulationGasHalo);
     ret += sscanf(line, "GalaxySimulationGasHaloScaleRadius = %"FSYM,
@@ -346,6 +350,15 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
         (DomainRightEdge[dim]-DomainLeftEdge[dim])/
         float(MetaData.TopGridDims[dim]);
     }
+    
+#ifdef USE_GRACKLE
+  if (GalaxySimulationChemEquilibrationTime != 0) {
+    /* Equilibrate chemistry */
+    TopGrid.GridData->SetTimeStep(GalaxySimulationChemEquilibrationTime
+                                  /TimeUnits);
+    TopGrid.GridData->GrackleWrapper();
+  }
+#endif
 
   /* If requested, refine the grid to the desired level. */
 
