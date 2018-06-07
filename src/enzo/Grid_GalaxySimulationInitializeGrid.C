@@ -129,6 +129,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT RotationScaleVelocity,
            FLOAT RotationScaleRadius,
            FLOAT RotationPowerLawIndex,
+           FLOAT RotationCessationRadius,
            FLOAT DiskMetallicityEnhancementFactor,
            FLOAT AngularMomentum[MAX_DIMENSION],
            FLOAT UniformVelocity[MAX_DIMENSION], 
@@ -279,10 +280,15 @@ RotationScaleVelocity *= CM_PER_KM; // km/s to cm/s
 RotationScaleVelocity /= LengthUnits/TimeUnits; // cm/s to code length/code time
 RotationScaleRadius *= CM_PER_KPC;  // kpc to cm
 RotationScaleRadius /= LengthUnits;  // cm to code length
-double rho_crit = 1.8788e-29*0.49;
-double Rvir = pow(3.0/(4.0*3.14159)*(GalaxyMass*SolarMass)/(200.*rho_crit),1./3.);
-Rvir /= LengthUnits;
-printf("Rvir %"FSYM"\n",Rvir);
+double r_cease;
+if (RotationCessationRadius == 0){
+  // Use virial radius (cm)
+  double rho_crit = 1.8788e-29*0.49;
+  r_cease = pow(3.0/(4.0*3.14159)*(GalaxyMass*SolarMass)/(200.*rho_crit),1./3.);
+} else {
+  r_cease *= CM_PER_KPC; // parameter in kpc
+}
+r_cease /= LengthUnits;
 
 /* compute size of fields */
 size = 1;
@@ -302,10 +308,14 @@ this->AllocateGrids();
  
 /* Loop over the mesh. */
 float density, disk_dens;
-FLOAT halo_vmag, disk_vel[MAX_DIMENSION], Velocity[MAX_DIMENSION];
+FLOAT halo_vmag, vmax, disk_vel[MAX_DIMENSION], Velocity[MAX_DIMENSION];
 FLOAT temperature, disk_temp, init_temp, initial_metallicity;
-FLOAT r_sph, r_cyl, x, y = 0, z = 0;
+FLOAT r_sph, x, y = 0, z = 0;
 int n = 0;
+
+if (UseHaloRotation)
+  vmax = RotationScaleVelocity * POW(r_cease/RotationScaleRadius, 
+                                     RotationPowerLawIndex);
 
 for (k = 0; k < GridDimension[2]; k++)
   for (j = 0; j < GridDimension[1]; j++)
@@ -337,9 +347,9 @@ for (k = 0; k < GridDimension[2]; k++)
                  POW(fabs(z-DiskPosition[2]), 2) );
     r_sph = max(r_sph, 0.1*CellWidth[0][0]);
     
-    r_cyl = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
+    /*r_cyl = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
                  POW(fabs(y-DiskPosition[1]), 2) );
-
+*/
     density = HaloGasDensity(r_sph)/DensityUnits;
     temperature = disk_temp = init_temp = HaloGasTemperature(r_sph);
 
@@ -386,12 +396,18 @@ for (k = 0; k < GridDimension[2]; k++)
       /* If requested, calculate velocity for CGM halo.
        * Will be replaced wtih disk velocity later if appropriate */
       if (UseHaloRotation){
-        if (r_cyl < Rvir)
+        if (r_sph <= r_cease) {
           halo_vmag = RotationScaleVelocity 
-                      * POW(r_cyl/RotationScaleRadius, 
+                      * POW(r_sph/RotationScaleRadius, 
                             RotationPowerLawIndex);
-        else
-          halo_vmag = 0;
+        }
+        else {
+          halo_vmag = vmax - 0.5*RotationScaleVelocity
+                             * (r_sph-r_cease)/RotationScaleRadius;
+          if (halo_vmag < 0)
+            halo_vmag = 0;
+        }
+        /* Cylindrical velocity */
         Velocity[0] = halo_vmag * (AngularMomentum[1]*rp_hat[2] -
                                    AngularMomentum[2]*rp_hat[1]);
         Velocity[1] = halo_vmag * (AngularMomentum[2]*rp_hat[0] -

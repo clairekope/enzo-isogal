@@ -126,7 +126,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   int GalaxySimulationGasHaloRotation;
   FLOAT GalaxySimulationGasHaloRotationScaleVelocity,
         GalaxySimulationGasHaloRotationScaleRadius,
-        GalaxySimulationGasHaloRotationIndex;
+        GalaxySimulationGasHaloRotationIndex,
+        GalaxySimulationGasHaloRotationCessationRadius;
 
 
   int   GalaxySimulationRefineAtStart,
@@ -160,7 +161,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasHaloRotation    = 0; // off
   GalaxySimulationGasHaloRotationScaleVelocity = 180.0; // km/s
   GalaxySimulationGasHaloRotationScaleRadius   = 10.0; // kpc
-  GalaxySimulationGasHaloRotationIndex         = 0.0; // unitless 
+  GalaxySimulationGasHaloRotationIndex         = 0.0; // unitless
+  GalaxySimulationGasHaloRotationCessationRadius = 0; // kpc; Rvir if 0 
   GalaxySimulationDiskMetallicityEnhancementFactor = 3.0; // w.r.t to halo metallicity
   GalaxySimulationInflowTime         = -1;
   GalaxySimulationInflowDensity      = 0;
@@ -238,6 +240,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationGasHaloRotationScaleRadius);
     ret += sscanf(line, "GalaxySimulationGasHaloRotationIndex = %"FSYM,
 		  &GalaxySimulationGasHaloRotationIndex);
+    ret += sscanf(line, "GalaxySimulationGasHaloRotationCessationRadius = %"FSYM,
+		  &GalaxySimulationGasHaloRotationCessationRadius);
     ret += sscanf(line, "GalaxySimulationDiskMetallicityEnhancementFactor = %"FSYM,
 		  &GalaxySimulationDiskMetallicityEnhancementFactor);
     ret += sscanf(line, "GalaxySimulationInflowTime = %"FSYM,
@@ -316,6 +320,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 						       GalaxySimulationGasHaloRotationScaleVelocity,
 						       GalaxySimulationGasHaloRotationScaleRadius,
 						       GalaxySimulationGasHaloRotationIndex,
+						       GalaxySimulationGasHaloRotationCessationRadius,
 						       GalaxySimulationDiskMetallicityEnhancementFactor,
 						       GalaxySimulationAngularMomentum,
 						       GalaxySimulationUniformVelocity,
@@ -333,25 +338,14 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   /* Convert minimum initial overdensity for refinement to mass
      (unless MinimumMass itself was actually set). */
 
-  /*
-  if (MinimumMassForRefinement[0] == FLOAT_UNDEFINED) {
-    MinimumMassForRefinement[0] = MinimumOverDensityForRefinement[0];
-    for (int dim = 0; dim < MetaData.TopGridRank; dim++)
-      MinimumMassForRefinement[0] *=(DomainRightEdge[dim]-DomainLeftEdge[dim])/
-	float(MetaData.TopGridDims[dim]);
-  }
-  */
-
   for (i = 0; i < MAX_FLAGGING_METHODS; i++)
     if (MinimumMassForRefinement[i] == FLOAT_UNDEFINED) {
       MinimumMassForRefinement[i] = MinimumOverDensityForRefinement[i];
       for (dim = 0; dim < MetaData.TopGridRank; dim++)
-	MinimumMassForRefinement[i] *=
-	  (DomainRightEdge[dim]-DomainLeftEdge[dim])/
-	  float(MetaData.TopGridDims[dim]);
+        MinimumMassForRefinement[i] *=
+        (DomainRightEdge[dim]-DomainLeftEdge[dim])/
+        float(MetaData.TopGridDims[dim]);
     }
-  
-
 
   /* If requested, refine the grid to the desired level. */
 
@@ -399,6 +393,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 							   GalaxySimulationGasHaloRotationScaleVelocity,
 							   GalaxySimulationGasHaloRotationScaleRadius,
 							   GalaxySimulationGasHaloRotationIndex,
+							   GalaxySimulationGasHaloRotationCessationRadius,
 							   GalaxySimulationDiskMetallicityEnhancementFactor,
 							   GalaxySimulationAngularMomentum,
 							   GalaxySimulationUniformVelocity,
