@@ -152,7 +152,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasMass            = 4.0e10;
   GalaxySimulationGalaxyMass         = 1.0e12;
   GalaxySimulationDiskTemperature    = 1000.0;
-  GalaxySimulationChemEquilibrationTime = 0; // cgs
+  GalaxySimulationChemEquilibrationTime = 0; // CODE
   GalaxySimulationGasHalo            = 0; // uniform halo w/ densicm and UniformTemperature
   GalaxySimulationGasHaloScaleRadius = .001; // Mpc
   GalaxySimulationGasHaloDensity     = 1.8e-27; // cgs
@@ -355,7 +355,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   if (GalaxySimulationChemEquilibrationTime != 0) {
     /* Equilibrate chemistry */
     TopGrid.GridData->SetTimeStep(GalaxySimulationChemEquilibrationTime
-                                  /TimeUnits);
+                                  * TimeUnits);
     TopGrid.GridData->GrackleWrapper();
   }
 #endif
