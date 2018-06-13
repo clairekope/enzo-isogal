@@ -698,7 +698,7 @@ gradient force to gravitational force for one-zone collapse test. */
 
 /* Wrap the grackle chemistry solver. */
 
-   int GrackleWrapper();
+   int GrackleWrapper(int UseCoolingTimestep=FALSE);
 
 /* Handle the selection of shock finding algorithm */
 
