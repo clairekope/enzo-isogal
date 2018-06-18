@@ -296,11 +296,11 @@ int grid::GrackleWrapper(int UseCoolingTimestep)
   }
 
   // disable radiative cooling
-  int reset_radiative_cooling = 0;
+/*  int reset_radiative_cooling = 0;
   if (grackle_data->with_radiative_cooling) {
     grackle_data->with_radiative_cooling = FALSE;
     reset_radiative_cooling = 1;
-  }
+  }*/
 
   /* Call the chemistry solver. */
   if (solve_chemistry(&grackle_units, &my_fields, (double) dt_cool) == FAIL){
@@ -308,8 +308,8 @@ int grid::GrackleWrapper(int UseCoolingTimestep)
     return FAIL;
   }
 
-  if (reset_radiative_cooling)
-    grackle_data->with_radiative_cooling = TRUE;
+//  if (reset_radiative_cooling)
+//    grackle_data->with_radiative_cooling = TRUE;
 
   if (HydroMethod != Zeus_Hydro) {
     for (i = 0; i < size; i++) {

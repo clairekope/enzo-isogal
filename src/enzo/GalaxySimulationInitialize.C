@@ -21,6 +21,12 @@
 #include "mpi.h"
 #endif /* USE_MPI */
 
+#ifdef USE_GRACKLE
+extern "C" {
+#include <grackle.h>
+}
+#endif
+
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -303,37 +309,37 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   /* set up grid */
 
   if (TopGrid.GridData->GalaxySimulationInitializeGrid(GalaxySimulationDiskRadius,
-						       GalaxySimulationGalaxyMass, 
-						       GalaxySimulationGasMass,
-						       GalaxySimulationDiskPosition, 
-						       GalaxySimulationDiskScaleHeightz,
-						       GalaxySimulationDiskScaleHeightR,
-						       GalaxySimulationTruncationRadius, 
-						       GalaxySimulationDarkMatterConcentrationParameter,
-						       GalaxySimulationDiskTemperature, 
-						       GalaxySimulationInitialTemperature,
-						       GalaxySimulationUniformDensity,
-						       GalaxySimulationGasHalo,
-						       GalaxySimulationGasHaloScaleRadius,
-						       GalaxySimulationGasHaloDensity,
-						       GalaxySimulationGasHaloTemperature,
-						       GalaxySimulationGasHaloAlpha,
-						       GalaxySimulationGasHaloCoreEntropy,
-						       GalaxySimulationGasHaloMetallicity,
-						       GalaxySimulationGasHaloRotation,
-						       GalaxySimulationGasHaloRotationScaleVelocity,
-						       GalaxySimulationGasHaloRotationScaleRadius,
-						       GalaxySimulationGasHaloRotationIndex,
-						       GalaxySimulationGasHaloRotationCessationRadius,
-						       GalaxySimulationDiskMetallicityEnhancementFactor,
-						       GalaxySimulationAngularMomentum,
-						       GalaxySimulationUniformVelocity,
-						       GalaxySimulationUseMetallicityField,
-						       GalaxySimulationInflowTime,
-						       GalaxySimulationInflowDensity,0,
-						       GalaxySimulationInitialBfield,
-						       GalaxySimulationInitialBfieldTopology,
-						       GalaxySimulationCR
+				GalaxySimulationGalaxyMass, 
+				GalaxySimulationGasMass,
+				GalaxySimulationDiskPosition, 
+				GalaxySimulationDiskScaleHeightz,
+				GalaxySimulationDiskScaleHeightR,
+				GalaxySimulationTruncationRadius, 
+				GalaxySimulationDarkMatterConcentrationParameter,
+				GalaxySimulationDiskTemperature, 
+				GalaxySimulationInitialTemperature,
+				GalaxySimulationUniformDensity,
+				GalaxySimulationGasHalo,
+				GalaxySimulationGasHaloScaleRadius,
+				GalaxySimulationGasHaloDensity,
+				GalaxySimulationGasHaloTemperature,
+				GalaxySimulationGasHaloAlpha,
+				GalaxySimulationGasHaloCoreEntropy,
+				GalaxySimulationGasHaloMetallicity,
+				GalaxySimulationGasHaloRotation,
+				GalaxySimulationGasHaloRotationScaleVelocity,
+				GalaxySimulationGasHaloRotationScaleRadius,
+				GalaxySimulationGasHaloRotationIndex,
+				GalaxySimulationGasHaloRotationCessationRadius,
+				GalaxySimulationDiskMetallicityEnhancementFactor,
+				GalaxySimulationAngularMomentum,
+				GalaxySimulationUniformVelocity,
+				GalaxySimulationUseMetallicityField,
+				GalaxySimulationInflowTime,
+				GalaxySimulationInflowDensity,0,
+				GalaxySimulationInitialBfield,
+				GalaxySimulationInitialBfieldTopology,
+				GalaxySimulationCR
 						       )
 	      == FAIL) {
       ENZO_FAIL("Error in GalaxySimulationInitialize[Sub]Grid.");
@@ -352,8 +358,15 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
     }
     
 #ifdef USE_GRACKLE
-  if (GalaxySimulationEquilibrateChem != 0) { // change to EquilibrateChem
+  if (GalaxySimulationEquilibrateChem != FALSE) { // change to EquilibrateChem
+    int reset_radiative_cooling = 0;
+    if (grackle_data->with_radiative_cooling) {
+      grackle_data->with_radiative_cooling = FALSE;
+      reset_radiative_cooling = 1;
+    }
     TopGrid.GridData->GrackleWrapper(TRUE);
+    if (reset_radiative_cooling)
+      grackle_data->with_radiative_cooling = TRUE;
   }
 #endif
 
@@ -382,51 +395,58 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
       while (Temp != NULL) {
 
 	if (Temp->GridData->GalaxySimulationInitializeGrid(GalaxySimulationDiskRadius,
-							   GalaxySimulationGalaxyMass, 
-							   GalaxySimulationGasMass,
-							   GalaxySimulationDiskPosition, 
-							   GalaxySimulationDiskScaleHeightz,
-							   GalaxySimulationDiskScaleHeightR,
-							   GalaxySimulationTruncationRadius, 
-							   GalaxySimulationDarkMatterConcentrationParameter,
-							   GalaxySimulationDiskTemperature, 
-							   GalaxySimulationInitialTemperature,
-							   GalaxySimulationUniformDensity,
-							   GalaxySimulationGasHalo,
-							   GalaxySimulationGasHaloScaleRadius,
-							   GalaxySimulationGasHaloDensity,
-							   GalaxySimulationGasHaloTemperature,
-							   GalaxySimulationGasHaloAlpha,
-							   GalaxySimulationGasHaloCoreEntropy,
-							   GalaxySimulationGasHaloMetallicity,
-							   GalaxySimulationGasHaloRotation,
-							   GalaxySimulationGasHaloRotationScaleVelocity,
-							   GalaxySimulationGasHaloRotationScaleRadius,
-							   GalaxySimulationGasHaloRotationIndex,
-							   GalaxySimulationGasHaloRotationCessationRadius,
-							   GalaxySimulationDiskMetallicityEnhancementFactor,
-							   GalaxySimulationAngularMomentum,
-							   GalaxySimulationUniformVelocity,
-							   GalaxySimulationUseMetallicityField,
-							   GalaxySimulationInflowTime,
-							   GalaxySimulationInflowDensity,level,
-							   GalaxySimulationInitialBfield,
-							   GalaxySimulationInitialBfieldTopology,
-							   GalaxySimulationCR
+				GalaxySimulationGalaxyMass, 
+				GalaxySimulationGasMass,
+				GalaxySimulationDiskPosition, 
+				GalaxySimulationDiskScaleHeightz,
+				GalaxySimulationDiskScaleHeightR,
+				GalaxySimulationTruncationRadius, 
+				GalaxySimulationDarkMatterConcentrationParameter,
+				GalaxySimulationDiskTemperature, 
+				GalaxySimulationInitialTemperature,
+				GalaxySimulationUniformDensity,
+				GalaxySimulationGasHalo,
+				GalaxySimulationGasHaloScaleRadius,
+				GalaxySimulationGasHaloDensity,
+				GalaxySimulationGasHaloTemperature,
+				GalaxySimulationGasHaloAlpha,
+				GalaxySimulationGasHaloCoreEntropy,
+				GalaxySimulationGasHaloMetallicity,
+				GalaxySimulationGasHaloRotation,
+				GalaxySimulationGasHaloRotationScaleVelocity,
+				GalaxySimulationGasHaloRotationScaleRadius,
+				GalaxySimulationGasHaloRotationIndex,
+				GalaxySimulationGasHaloRotationCessationRadius,
+				GalaxySimulationDiskMetallicityEnhancementFactor,
+				GalaxySimulationAngularMomentum,
+				GalaxySimulationUniformVelocity,
+				GalaxySimulationUseMetallicityField,
+				GalaxySimulationInflowTime,
+				GalaxySimulationInflowDensity,level,
+				GalaxySimulationInitialBfield,
+				GalaxySimulationInitialBfieldTopology,
+				GalaxySimulationCR
 							   )
 	      == FAIL) {
 	    ENZO_FAIL("Error in GalaxySimulationInitialize[Sub]Grid.");
 	}// end subgrid if
 
+	#ifdef USE_GRACKLE
+	  if (GalaxySimulationEquilibrateChem != FALSE) { // change to EquilibrateChem
+	    int reset_radiative_cooling = 0;
+	    if (grackle_data->with_radiative_cooling) {
+	      grackle_data->with_radiative_cooling = FALSE;
+	      reset_radiative_cooling = 1;
+	    }
+	    Temp->GridData->GrackleWrapper(TRUE);
+	    if (reset_radiative_cooling)
+	      grackle_data->with_radiative_cooling = TRUE;
+	  }
+	#endif
+
 	Temp = Temp->NextGridThisLevel;
       }
     } // end: loop over levels
-
-#ifdef USE_GRACKLE
-    if (GalaxySimulationEquilibrateChem != 0) { // change to EquilibrateChem
-      TopGrid.GridData->GrackleWrapper(TRUE);
-    }
-#endif
 
     /* Loop back from the bottom, restoring the consistency among levels. */
 
