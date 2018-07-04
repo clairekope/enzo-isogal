@@ -354,6 +354,10 @@ EXTERN int RadiativeCoolingModel;
 
 EXTERN CloudyCoolingDataType CloudyCoolingData;
 
+/* Table of equilibrium chem values for initialization */
+
+EXTERN EquilibriumTableType EquilibriumTable;
+
 /* Gadget Equilibrium cooling on/off flag */
 
 EXTERN int GadgetEquilibriumCooling;

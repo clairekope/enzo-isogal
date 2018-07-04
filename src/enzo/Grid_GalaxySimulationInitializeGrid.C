@@ -56,6 +56,10 @@ float gauss_mass(FLOAT r, FLOAT z, FLOAT xpos, FLOAT ypos, FLOAT zpos,
                  FLOAT cellwidth);
 void rot_to_disk(FLOAT xpos, FLOAT ypos, FLOAT zpos, FLOAT &xrot,
                  FLOAT &yrot, FLOAT &zrot, FLOAT inv [3][3]);
+double bilinear_interp(double x, double y, 
+                       double x1, double x2, double y1, double y2,
+                       double f_x1y1, double f_x1y2, 
+                       double f_x2y1, double f_x2y2);
 
 /* Internal Routines for CGM setup */
 float HaloGasDensity(FLOAT R);
@@ -118,6 +122,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT DiskTemperature,
            FLOAT InitialTemperature,
            FLOAT UniformDensity,
+           int   EquilibrateChem,
            int   GasHalo,
            FLOAT GasHaloScaleRadius,
            FLOAT GasHaloDensity,
@@ -311,7 +316,8 @@ float density, disk_dens;
 FLOAT halo_vmag, vmax, disk_vel[MAX_DIMENSION], Velocity[MAX_DIMENSION];
 FLOAT temperature, disk_temp, init_temp, initial_metallicity;
 FLOAT r_sph, x, y = 0, z = 0;
-int n = 0;
+int n = 0, iter;
+int dens_indx, temp_indx;
 
 if (UseHaloRotation)
   vmax = RotationScaleVelocity * POW(r_cease/RotationScaleRadius, 
@@ -602,8 +608,144 @@ for (k = 0; k < GridDimension[2]; k++)
       // Set multispecies fields!
       // this attempts to set them such that species conservation is maintained,
       // using the method in CosmologySimulationInitializeGrid.C
-      if(MultiSpecies){
+    if(MultiSpecies){
 
+      if (EquilibrateChem) {
+
+        /*  What temperature and density bins does the cell fall between? */
+        
+        // Start assuming values are larger than those in table;
+        // set to dim_size-2 so we can extrapolate using last 2 pts
+        dens_indx = temp_indx = EquilibriumTable.dim_size-2;
+        for (iter=0; iter < EquilibriumTable.dim_size; ++iter) {
+          if (density < EquilibriumTable.density[iter]) {
+            dens_indx = iter-1;
+            break;
+          }
+        }
+        for (iter=0; iter<EquilibriumTable.dim_size; ++iter) {
+          if (temperature < EquilibriumTable.temperature[iter]) {
+            temp_indx = iter-1;
+            break;
+          }
+        }
+        if (dens_indx == -1) dens_indx=0; 
+        if (temp_indx == -1) temp_indx=0;
+
+        BaryonField[HINum][n] = bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.HI[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.HI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.HI[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.HI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+        BaryonField[HIINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.HII[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.HII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.HII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.HII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+        BaryonField[HeINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.HeI[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.HeI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.HeI[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.HeI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+        BaryonField[HeIINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.HeII[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.HeII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.HeII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.HeII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+        BaryonField[HeIIINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.HeIII[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.HeIII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.HeIII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.HeIII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+        if (MultiSpecies > 1) {
+          BaryonField[HMNum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.HM[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.HM[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.HM[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.HM[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+          BaryonField[HeINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.H2I[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.H2I[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.H2I[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.H2I[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+          BaryonField[HeIINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.H2II[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.H2II[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.H2II[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.H2II[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+        }
+        if (MultiSpecies > 2) {
+          BaryonField[DINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.DI[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.DI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.DI[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.DI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+          BaryonField[HeINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.DII[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.DII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.DII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.DII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+
+          BaryonField[HeIINum][n] =  bilinear_interp(density, temperature, 
+  EquilibriumTable.density[dens_indx],
+  EquilibriumTable.density[dens_indx+1],
+  EquilibriumTable.temperature[temp_indx],
+  EquilibriumTable.temperature[temp_indx+1],
+  EquilibriumTable.HDI[EquilibriumTable.dim_size * temp_indx + dens_indx],
+  EquilibriumTable.HDI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx],
+  EquilibriumTable.HDI[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
+  EquilibriumTable.HDI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
+        }
+      } // end if EquilibrateChem
+      else {
         BaryonField[HINum][n] = TestProblemData.HI_Fraction * 
                            BaryonField[0][n] *
                            TestProblemData.HydrogenFractionByMass;
@@ -665,9 +807,11 @@ for (k = 0; k < GridDimension[2]; k++)
                         0.75 * TestProblemData.DeuteriumToHydrogenRatio;
         }
 
-      } // if(MultiSpecies)
+      } // end not EquilibrateChem
 
-    } // end loop over grids
+    } // if(MultiSpecies)
+
+  } // end loop over grids
 
   halo_clean(); // deletes halo-related arrays if needed (for circumgalactic medium)
  
@@ -1646,4 +1790,19 @@ double qromb(double (*func)(double), double a, double b)
   fprintf(stderr,"\t>> ss = %"FSYM", dss = %"FSYM"\n", ss, dss);
   ENZO_FAIL("FAILED IN QROMB IN GRID_GALAXYSIMULATIONINIALIZE\n");
   return -1.0;
+}
+
+double bilinear_interp(double x, double y, 
+                       double x1, double x2, double y1, double y2,
+                       double f_x1y1, double f_x1y2, 
+                       double f_x2y1, double f_x2y2) {
+double interp;
+
+interp = f_x1y1*(x2-x)*(y2-y) + f_x2y1*(x-x1)*(y2-y) 
+       + f_x1y2*(x2-x)*(y-y1) + f_x2y2*(x-x1)*(y-y1);
+
+interp *= 1/( (x2-x1)*(y2-y1) );
+
+return interp;
+
 }

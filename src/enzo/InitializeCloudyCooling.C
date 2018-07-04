@@ -51,11 +51,11 @@ int InitializeCloudyCooling(FLOAT Time)
 
   // Initialize things needed even if cloudy cooling is not used.
 
-    CloudyCoolingData.CloudyCoolingGridParameters = new float*[CLOUDY_COOLING_MAX_DIMENSION];
-    CloudyCoolingData.CloudyCoolingGridDimension = new int[CLOUDY_COOLING_MAX_DIMENSION];
-    for (q = 0;q < CLOUDY_COOLING_MAX_DIMENSION;q++) {
-      CloudyCoolingData.CloudyCoolingGridDimension[q] = 0; 
-    }
+  CloudyCoolingData.CloudyCoolingGridParameters = new float*[CLOUDY_COOLING_MAX_DIMENSION];
+  CloudyCoolingData.CloudyCoolingGridDimension = new int[CLOUDY_COOLING_MAX_DIMENSION];
+  for (q = 0;q < CLOUDY_COOLING_MAX_DIMENSION;q++) {
+    CloudyCoolingData.CloudyCoolingGridDimension[q] = 0; 
+  }
 
   // Zero arrays if cloudy cooling not used.
 

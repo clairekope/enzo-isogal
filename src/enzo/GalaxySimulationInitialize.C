@@ -55,10 +55,15 @@ int GetUnits(float *DensityUnits, float *LengthUnits,
        float *TemperatureUnits, float *TimeUnits,
        float *VelocityUnits, double *MassUnits, FLOAT Time);
 
+int ReadEquilibriumTable(const char * name, FLOAT Time);
 
 int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr, 
 			  HierarchyEntry &TopGrid, TopGridData &MetaData, ExternalBoundary &Exterior)
 {
+  // for testing
+  fprintf(stderr,"Reading table\n");
+  ReadEquilibriumTable("equilibrium_table_50.h5", MetaData.Time);
+
   char *DensName    = "Density";
   char *TEName      = "TotalEnergy";
   char *GEName      = "GasEnergy";
@@ -319,6 +324,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationDiskTemperature, 
 				GalaxySimulationInitialTemperature,
 				GalaxySimulationUniformDensity,
+                GalaxySimulationEquilibrateChem,
 				GalaxySimulationGasHalo,
 				GalaxySimulationGasHaloScaleRadius,
 				GalaxySimulationGasHaloDensity,
@@ -405,6 +411,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationDiskTemperature, 
 				GalaxySimulationInitialTemperature,
 				GalaxySimulationUniformDensity,
+                GalaxySimulationEquilibrateChem,
 				GalaxySimulationGasHalo,
 				GalaxySimulationGasHaloScaleRadius,
 				GalaxySimulationGasHaloDensity,
