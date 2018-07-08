@@ -60,8 +60,7 @@ int ReadEquilibriumTable(const char * name, FLOAT Time);
 int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr, 
 			  HierarchyEntry &TopGrid, TopGridData &MetaData, ExternalBoundary &Exterior)
 {
-  // for testing
-  fprintf(stderr,"Reading table\n");
+
   ReadEquilibriumTable("equilibrium_table_50.h5", MetaData.Time);
 
   char *DensName    = "Density";

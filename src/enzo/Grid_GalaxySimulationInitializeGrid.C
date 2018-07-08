@@ -611,7 +611,6 @@ for (k = 0; k < GridDimension[2]; k++)
     if(MultiSpecies){
 
       if (EquilibrateChem) {
-
         /*  What temperature and density bins does the cell fall between? */
         
         // Start assuming values are larger than those in table;
