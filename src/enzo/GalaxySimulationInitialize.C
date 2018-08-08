@@ -361,7 +361,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
         (DomainRightEdge[dim]-DomainLeftEdge[dim])/
         float(MetaData.TopGridDims[dim]);
     }
-    
+  /*    
 #ifdef USE_GRACKLE
   if (GalaxySimulationEquilibrateChem != FALSE) { // change to EquilibrateChem
     int reset_radiative_cooling = 0;
@@ -374,7 +374,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
       grackle_data->with_radiative_cooling = TRUE;
   }
 #endif
-
+  */
   /* If requested, refine the grid to the desired level. */
 
   if (GalaxySimulationRefineAtStart) {
@@ -436,7 +436,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 	      == FAIL) {
 	    ENZO_FAIL("Error in GalaxySimulationInitialize[Sub]Grid.");
 	}// end subgrid if
-
+	/*
 	#ifdef USE_GRACKLE
 	  if (GalaxySimulationEquilibrateChem != FALSE) { // change to EquilibrateChem
 	    int reset_radiative_cooling = 0;
@@ -449,7 +449,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 	      grackle_data->with_radiative_cooling = TRUE;
 	  }
 	#endif
-
+	*/
 	Temp = Temp->NextGridThisLevel;
       }
     } // end: loop over levels
