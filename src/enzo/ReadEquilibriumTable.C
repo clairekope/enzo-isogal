@@ -422,6 +422,8 @@ int ReadEquilibriumTable(const char * name, FLOAT Time)
   for (int i=0; i<EquilibriumTable.dim_size; ++i){
     EquilibriumTable.density[i] /= DensityUnits;
     //EquilibriumTable.temperature[i] /= TemperatureUnits; // keep in K
+  }
+  for (int i=0; i<EquilibriumTable.dim_size*EquilibriumTable.dim_size; ++i){
     if (MultiSpecies) {
       EquilibriumTable.HI[i] /= DensityUnits;
       EquilibriumTable.HII[i] /= DensityUnits;
