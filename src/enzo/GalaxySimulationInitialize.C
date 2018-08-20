@@ -60,9 +60,6 @@ int ReadEquilibriumTable(const char * name, FLOAT Time);
 int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr, 
 			  HierarchyEntry &TopGrid, TopGridData &MetaData, ExternalBoundary &Exterior)
 {
-
-  ReadEquilibriumTable("equilibrium_table_50.h5", MetaData.Time);
-
   char *DensName    = "Density";
   char *TEName      = "TotalEnergy";
   char *GEName      = "GasEnergy";
@@ -279,6 +276,9 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
       fprintf(stderr, "warning: the following parameter line was not interpreted:\n%s\n", line);
 
   } // end input from parameter file
+
+  if (GalaxySimulationEquilibrateChem)
+    ReadEquilibriumTable("equilibrium_table_50.h5", MetaData.Time);
 
   /* fix wind values wrt units */
   float DensityUnits, LengthUnits, TemperatureUnits, TimeUnits, VelocityUnits;
@@ -515,6 +515,28 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
     GalaxySimulationPreWindVelocity[0] = 0.0;
     GalaxySimulationPreWindVelocity[1] = 0.0;
     GalaxySimulationPreWindVelocity[2] = 0.0;
+  }
+
+  // If we used the Equilibrium Table, delete it
+  if (GalaxySimulationEquilibrateChem){
+    if (MultiSpecies) {
+      delete [] EquilibriumTable.HI;
+      delete [] EquilibriumTable.HII;
+      delete [] EquilibriumTable.HeI;
+      delete [] EquilibriumTable.HeII;
+      delete [] EquilibriumTable.HeIII;
+      delete [] EquilibriumTable.de;
+      if (MultiSpecies > 1) {
+        delete [] EquilibriumTable.HM;
+        delete [] EquilibriumTable.H2I;
+        delete [] EquilibriumTable.H2II;
+      }
+      if (MultiSpecies > 2) {
+        delete [] EquilibriumTable.DI;
+        delete [] EquilibriumTable.DII;
+        delete [] EquilibriumTable.HDI;
+      }
+    }
   }
 
  /* set up field names and units */
