@@ -34,7 +34,7 @@ def get_hg_info():
         
         return (changeset, branch, my_diff)
     
-    except RepoError:
+    except:
         print("WARNING: could not get version information.")
         return ('unknown', 'unknown', None)
 

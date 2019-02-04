@@ -165,12 +165,12 @@ c                 implies that the dark matter velocity dispersion is >>
 c                 the sound speed.  This will be true for small perturbations
 c                 within large halos).
 c
-               bmass = d(i,j,k)*dble(d1)*dble(x1*dx)**3 / msolar
-               isosndsp2 = sndspdC * temp(i,j,k)
-               jeanmass = pi/(6._RKIND*sqrt(d(i,j,k)*dble(d1))) *
-     &                    dble(pi * isosndsp2 / G)**1.5_RKIND / msolar
-
-               if (bmass .lt. jeanmass) goto 10
+c               bmass = d(i,j,k)*dble(d1)*dble(x1*dx)**3 / msolar
+c               isosndsp2 = sndspdC * temp(i,j,k)
+c               jeanmass = pi/(6._RKIND*sqrt(d(i,j,k)*dble(d1))) *
+c     &                    dble(pi * isosndsp2 / G)**1.5_RKIND / msolar
+c
+c               if (bmass .lt. jeanmass) goto 10
 c
 c              6) Check to see if star is above threshold (given
 c                 in units of M_solar)
