@@ -21,12 +21,6 @@
 #include "mpi.h"
 #endif /* USE_MPI */
 
-#ifdef USE_GRACKLE
-extern "C" {
-#include <grackle.h>
-}
-#endif
-
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -392,7 +386,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationDiskTemperature, 
 				GalaxySimulationInitialTemperature,
 				GalaxySimulationUniformDensity,
-                GalaxySimulationEquilibrateChem,
+				GalaxySimulationEquilibrateChem,
 				GalaxySimulationGasHalo,
 				GalaxySimulationGasHaloScaleRadius,
 				GalaxySimulationGasHaloDensity,

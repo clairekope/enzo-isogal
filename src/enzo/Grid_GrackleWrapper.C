@@ -32,7 +32,7 @@ int GetUnits(float *DensityUnits, float *LengthUnits,
 	     float *VelocityUnits, FLOAT Time);
 int FindField(int field, int farray[], int numfields);
 
-int grid::GrackleWrapper(int UseCoolingTimestep)
+int grid::GrackleWrapper()
 {
 
 #ifdef USE_GRACKLE
@@ -272,44 +272,11 @@ int grid::GrackleWrapper(int UseCoolingTimestep)
   }
 #endif // TRANSFER
 
-  /* Calculate the cooling time, if that's our timestep */
-  if (UseCoolingTimestep) {
-    int i, j, k, index;
-    float *cooling_time = new float[size];
-    if (this->ComputeCoolingTime(cooling_time, TRUE) == FAIL) {
-      ENZO_FAIL("Error in grid->ComputeCoolingTime.\n");
-    }
-
-    dt_cool = 1e9;
-    for (k = GridStartIndex[2]; k < GridEndIndex[2]; k++) {
-      for (j = GridStartIndex[1]; j < GridEndIndex[1]; j++) {
-        index = GRIDINDEX_NOGHOST(GridStartIndex[0], j, k);
-        for (i = GridStartIndex[0]; i < GridEndIndex[0]; i++, index++) {
-          if (cooling_time[index] > 0)  
-            dt_cool = min(dt_cool, cooling_time[index]);
-        }
-      }
-    }
-    dt_cool *= CoolingTimestepSafetyFactor;
- 
-    delete [] cooling_time;
-  }
-
-  // disable radiative cooling
-/*  int reset_radiative_cooling = 0;
-  if (grackle_data->with_radiative_cooling) {
-    grackle_data->with_radiative_cooling = FALSE;
-    reset_radiative_cooling = 1;
-  }*/
-
   /* Call the chemistry solver. */
   if (solve_chemistry(&grackle_units, &my_fields, (double) dt_cool) == FAIL){
     fprintf(stderr, "Error in Grackle solve_chemistry.\n");
     return FAIL;
   }
-
-//  if (reset_radiative_cooling)
-//    grackle_data->with_radiative_cooling = TRUE;
 
   if (HydroMethod != Zeus_Hydro) {
     for (i = 0; i < size; i++) {

@@ -33,6 +33,7 @@
 #define pi (3.14159)
 #define mh (1.67e-24)           //Mass of Hydrogen [g]
 #define kboltz (1.381e-16)      //Boltzmann's Constant [ergK-1]
+#define mu (0.6)
 #define CM_PER_KM (1.0e5)
 #define CM_PER_KPC (3.0856e21)
 
@@ -161,7 +162,7 @@ gScaleHeightz = ScaleHeightz;
 densicm = UniformDensity;  // gas density if no halo is used
 MgasScale = GasMass;
 Ticm = InitialTemperature;  // gas temperature if no halo is used
-Picm = kboltz*UniformDensity*Ticm/(0.6*mh);  // gas pressure if no halo is used
+Picm = kboltz*UniformDensity*Ticm/(mu*mh);  // gas pressure if no halo is used
 TruncRadius = GalaxyTruncationRadius;
 SmoothRadius = TruncRadius*.02/.026;
 SmoothLength = TruncRadius - SmoothRadius;
@@ -246,7 +247,7 @@ if (ProcessorNumber != MyProcessorNumber)
 
 /* Set various units. */
 
-float CriticalDensity = 1, BoxLength = 1, mu = 0.6;
+float CriticalDensity = 1, BoxLength = 1;
 FLOAT a, dadt, ExpansionFactor = 1;
 if (ComovingCoordinates) {
   CosmologyComputeExpansionFactor(Time, &a, &dadt);
@@ -1036,6 +1037,9 @@ double DiskPotentialDarkMatterMass(FLOAT R){
    GalaxySimulationGasHalo = 4  -- assumes a hydrostatic equilibrium of CGM given an NFW dark matter halo
                                    and an entropy that is a power-law function of radius.
    GalaxySimulationGasHalo = 5  -- as #4, but the entropy distribution has a floor value, so S = S_f + S_0 (r/r_0)^alpha
+   GalaxySimulationGasHalo = 5  -- as #4, but the entropy distribution follows that for a precipitation-regulated NFW halo
+                                   in Voit 2019 (ApJ)
+        
 
    Inputs:  R - spherical radius, code units
 
@@ -1105,16 +1109,16 @@ float HaloGasDensity(FLOAT R){
     // now get number density using expression above
 
     T_kev = GalaxySimulationGasHaloTemperature*8.6174e-08;  // halo temperature in keV
-    n_0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);  // convert n_0 to electron number density 
+    n_0 = GalaxySimulationGasHaloDensity / (mu*mh);  // convert n_0 to electron number density 
     S_0 = T_kev / POW(n_0,Gamma-1.0);   // S_0 in units of kev cm^2
 
     // get number density at this radius giving the requested info
     this_number_density = T_kev/(GalaxySimulationGasHaloCoreEntropy + S_0*POW(this_radius_cgs/scale_radius_cgs, power_law_exponent));
     this_number_density = POW(this_number_density, 1.0/(Gamma-1.0));
 
-    return this_number_density*0.6*1.67e-24;  // return physical density
+    return this_number_density*mu*mh;  // return physical density
     
-  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5){
+  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5 || GalaxySimulationGasHalo == 6){
     /* assumes entropy is a power-law function of radius OR a cored power-law function
        of radius and gas is in hydrostatic equilibrium w/the NFW halo.  */
 
@@ -1124,7 +1128,7 @@ float HaloGasDensity(FLOAT R){
     index = int(this_radius_cgs/CGM_data.dr+1.0e-3);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
-    return CGM_data.n_rad[index]*0.6*1.67e-24;  // return physical density
+    return CGM_data.n_rad[index]*mu*mh;  // return physical density
     
   } else {
     ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasDensity().");
@@ -1153,7 +1157,7 @@ float HaloGasTemperature(FLOAT R){
   } else if(GalaxySimulationGasHalo == 1){
     /* gets temperature as a function of radius given by virial theorem */
 
-    return GravConst*DiskPotentialDarkMatterMass(R)*0.6*mh/(3.0*kboltz*R*LengthUnits);
+    return GravConst*DiskPotentialDarkMatterMass(R)*mu*mh/(3.0*kboltz*R*LengthUnits);
     
   } else if(GalaxySimulationGasHalo == 2){
     /* assumes entropy is a power-law function of radius and T = Tvir */
@@ -1166,7 +1170,7 @@ float HaloGasTemperature(FLOAT R){
 
     return GalaxySimulationGasHaloTemperature;
 
-  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5){
+  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5 || GalaxySimulationGasHalo == 6){
     /* assumes entropy is a power-law function of radius and gas is in hydrostatic equilibrium */
 
     double this_radius_cgs;
@@ -1189,7 +1193,7 @@ float HaloGasTemperature(FLOAT R){
    for convenience (global within this file, at least). */
 void halo_init(void){
 
-  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 5) return;
+  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return;
 
   double k1, k2, k3, k4, this_n, this_radius, temperature;
   double M, Rvir, rho_crit = 1.8788e-29*0.49, Tvir, n0, r0, dr;
@@ -1214,7 +1218,7 @@ void halo_init(void){
   
   // set some quantities based on user inputs; this defines our integration
   Tvir = GalaxySimulationGasHaloTemperature;
-  n0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);
+  n0 = GalaxySimulationGasHaloDensity / (mu*mh);
   r0 = GalaxySimulationGasHaloScaleRadius*Mpc;
 
   // used for our numerical integration
@@ -1296,7 +1300,7 @@ void halo_init(void){
    Software campsite principle. */
 void halo_clean(void){
 
-  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 5) return;
+  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return;
 
   delete [] CGM_data.n_rad;
   delete [] CGM_data.T_rad;
@@ -1316,7 +1320,7 @@ double halo_S_of_r(double r){
 
   // calculate a bunch of things based on user inputs
   Tvir = GalaxySimulationGasHaloTemperature;  // in Kelvin
-  n0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);  // convert from density to electron number density (cm^-3)
+  n0 = GalaxySimulationGasHaloDensity / (mu*mh);  // convert from density to electron number density (cm^-3)
   r0 = GalaxySimulationGasHaloScaleRadius*Mpc;  // scale radius in CGS
   Smin = GalaxySimulationGasHaloCoreEntropy/8.621738e-8;  // given in keV cm^2, converted to Kelvin cm^2
   S0 = Tvir / POW(n0,Gamma-1);  // entropy at scale radius, in units of Kelvin cm^2
@@ -1328,6 +1332,11 @@ double halo_S_of_r(double r){
   } else if (GalaxySimulationGasHalo == 5){
 
     return Smin + S0*POW(r/r0,GalaxySimulationGasHaloAlpha);  // has units of Kelvin cm^2
+
+  } else if (GalaxySimulationGasHalo == 6){
+
+    double vcirc2 = GravConst * halo_galmass_at_r(r) / r;
+    double Tgrav = mu*mh * vcirc2 / (2*kboltz);
 
   } else {
     ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
@@ -1345,7 +1354,7 @@ double halo_dSdr(double r){
 
   // calculate a bunch of things based on user inputs
   Tvir = GalaxySimulationGasHaloTemperature;  // in Kelvin
-  n0 = GalaxySimulationGasHaloDensity / (0.6*1.67e-24);  // convert from density to electron number density (cm^-3)
+  n0 = GalaxySimulationGasHaloDensity / (mu*mh);  // convert from density to electron number density (cm^-3)
   r0 = GalaxySimulationGasHaloScaleRadius*Mpc;  // scale radius in CGS
   Smin = GalaxySimulationGasHaloCoreEntropy/8.621738e-8;  // given in keV cm^2, converted to Kelvin cm^2
   S0 = Tvir / POW(n0,Gamma-1);  // entropy at scale radius, in units of Kelvin cm^2
@@ -1355,9 +1364,13 @@ double halo_dSdr(double r){
     // has units of Kelvin*cm, same deriv for both halo types (since constant drops out)
     return S0*GalaxySimulationGasHaloAlpha*
       POW(r/r0,GalaxySimulationGasHaloAlpha-1.0)/r0;
+
+  } else if (GalaxySimulationGasHalo == 6){
     
+    return SOMETHING;
+
   } else {
-    ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
+    ENZO_FAIL("halo_dSdr: GalaxySimulationGasHalo set incorrectly.");
   }
 }
 
@@ -1593,8 +1606,8 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth, FLOAT z, FLOAT density,
     fprintf(stderr,"denuse small:  %"FSYM"\n", denuse);
   }
   rsph_icm = sqrt(drcyl*drcyl+POW(zicm/LengthUnits,2));
-  Picm = HaloGasDensity(rsph_icm)*kboltz*HaloGasTemperature(rsph_icm)/(0.6*mh);
-  temperature=0.6*mh*(Picm+Pressure)/(kboltz*denuse);
+  Picm = HaloGasDensity(rsph_icm)*kboltz*HaloGasTemperature(rsph_icm)/(mu*mh);
+  temperature=mu*mh*(Picm+Pressure)/(kboltz*denuse);
 
   /* Calculate pressure gradient */
 
