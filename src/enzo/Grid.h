@@ -577,6 +577,20 @@ gradient force to gravitational force for one-zone collapse test. */
 
    int ComputeCoolingTime(float *cooling_time, int CoolingTimeOnly=FALSE);
 
+/* Baryons: compute cooling rate for user supplied data */
+
+   int GrackleCustomCoolRate(int rank, int *dim, FLOAT *cool_rate,
+			     FLOAT *dens, FLOAT *thrmeng,
+			     FLOAT *velx, FLOAT *vely, FLOAT *velz,
+			     FLOAT *HIdens=nullptr, FLOAT *HIIdens=nullptr,
+			     FLOAT *HeIdens=nullptr, FLOAT *HeIIdens=nullptr, FLOAT *HeIIIdens=nullptr,
+			     FLOAT *edens=nullptr,
+			     FLOAT *HMdens=nullptr, FLOAT *H2Idens=nullptr, FLOAT *H2IIdens=nullptr,
+			     FLOAT *DIdens=nullptr, FLOAT *DIIdens=nullptr, FLOAT *HDIdens=nullptr,
+			     FLOAT *metaldens=nullptr,
+			     FLOAT *kphHI=nullptr, FLOAT *kphHeI=nullptr, FLOAT *kphHeII=nullptr,
+			     FLOAT *kdissH2I=nullptr, FLOAT *gamma=nullptr);
+   
 /* Baryons & DualEnergyFormalism: Restore consistency between total and
                                   internal energy fields. */
 

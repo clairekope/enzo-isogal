@@ -184,8 +184,8 @@ GalaxySimulationDiskMetallicityEnhancementFactor = DiskMetallicityEnhancementFac
 /*  initializes halo radius, density, temperature profiles 
     for circumgalactic medium if needed (i.e., for CGM profiles that
     require integration to get quantities we care about. */
-halo_init(); 
-  
+halo_init();
+ 
 /* create fields */
 NumberOfBaryonFields = 0;
 DensNum = NumberOfBaryonFields;
@@ -265,6 +265,86 @@ if (ComovingCoordinates) {
   } // end get units error if  
 } // end units if/else
 
+//TEST
+ printf("Testing cooling rate\n");
+ 
+ float *rate = new float[6];
+ float *dens = new float[6];
+ float *temp = new float[6];
+ float *velx = new float[6];
+ float *vely = new float[6];
+ float *velz = new float[6];
+ float *HIdens = new float[6];
+ float *HIIdens = new float[6];
+ float *HeIdens = new float[6];
+ float *HeIIdens = new float[6];
+ float *HeIIIdens = new float[6];
+ float *H2Idens = new float[6];
+ float *H2IIdens = new float[6];
+ float *HMdens = new float[6];
+ float *edens = new float[6];
+ float *metal = new float[6];
+
+ temp[0] = 1e4/TemperatureUnits/((Gamma-1.0)*mu);
+ temp[1] = 5e4/TemperatureUnits/((Gamma-1.0)*mu);
+ temp[2] = 1e5/TemperatureUnits/((Gamma-1.0)*mu);
+ temp[3] = 5e5/TemperatureUnits/((Gamma-1.0)*mu);
+ temp[4] = 1e6/TemperatureUnits/((Gamma-1.0)*mu);
+ temp[5] = 5e6/TemperatureUnits/((Gamma-1.0)*mu);
+ 
+ for (i=0; i<6; ++i) {
+   dens[i] = 1.007947 * 1.660538921e-24 / DensityUnits;
+   velx[i] = vely[i] = velz[i] = 0.0;
+   HIdens[i] = 1e-20 * dens[i];
+   HIIdens[i] = 0.76 * dens[i];
+   HeIdens[i] = (1.0 - 0.76) * dens[i];
+   HeIIdens[i] = 1e-20 * dens[i];
+   HeIIIdens[i] = 1e-20 * dens[i];
+   H2Idens[i] = 1e-20 * dens[i];
+   H2IIdens[i] = 1e-20 * dens[i];
+   HMdens[i] = 1e-20 * dens[i];
+   edens[i] = HIIdens[i] + HeIIdens[i]/4.0 + HeIIIdens[i]/2.0;
+   metal[i] = 0.02041 * dens[i];
+ }
+
+ printf("density\n");
+ for (i=0; i<6; ++i){
+   printf("%e ", dens[i]);
+ }
+ printf("\n");
+
+ printf("Arrays prepped\n");
+ 
+ int d = 6;
+ 
+ this->GrackleCustomCoolRate(1, &d, rate, dens, temp,
+			     velx, vely, velz, HIdens, HIIdens,
+			     HeIdens, HeIIdens, HeIIIdens, edens,
+			     HMdens, H2Idens, H2IIdens,
+			     nullptr, nullptr, nullptr,
+			     metal);
+
+ printf("Cooling Rates: (code units)\n");
+ for (i=0; i<6; ++i)
+   printf("%e ", rate[i]);
+ printf("\n");
+ 
+ delete [] rate;
+ delete [] dens;
+ delete [] temp;
+ delete [] velx;
+ delete [] vely;
+ delete [] velz;
+ delete [] HIdens;
+ delete [] HIIdens;
+ delete [] HeIdens;
+ delete [] HeIIdens;
+ delete [] HeIIIdens;
+ delete [] edens;
+
+ exit(0);
+// END TEST
+ 
 /* correct background density if it's not given in code units */
 if( UniformDensity < 1.0E-10 ){
   UniformDensity /= DensityUnits;
@@ -1367,7 +1447,7 @@ double halo_dSdr(double r){
 
   } else if (GalaxySimulationGasHalo == 6){
     
-    return SOMETHING;
+    return 0;//SOMETHING;
 
   } else {
     ENZO_FAIL("halo_dSdr: GalaxySimulationGasHalo set incorrectly.");
