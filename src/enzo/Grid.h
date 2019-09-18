@@ -582,14 +582,14 @@ gradient force to gravitational force for one-zone collapse test. */
    int GrackleCustomCoolRate(int rank, int *dim, FLOAT *cool_rate,
 			     FLOAT *dens, FLOAT *thrmeng,
 			     FLOAT *velx, FLOAT *vely, FLOAT *velz,
-			     FLOAT *HIdens=nullptr, FLOAT *HIIdens=nullptr,
-			     FLOAT *HeIdens=nullptr, FLOAT *HeIIdens=nullptr, FLOAT *HeIIIdens=nullptr,
-			     FLOAT *edens=nullptr,
-			     FLOAT *HMdens=nullptr, FLOAT *H2Idens=nullptr, FLOAT *H2IIdens=nullptr,
-			     FLOAT *DIdens=nullptr, FLOAT *DIIdens=nullptr, FLOAT *HDIdens=nullptr,
-			     FLOAT *metaldens=nullptr,
-			     FLOAT *kphHI=nullptr, FLOAT *kphHeI=nullptr, FLOAT *kphHeII=nullptr,
-			     FLOAT *kdissH2I=nullptr, FLOAT *gamma=nullptr);
+			     FLOAT *HIdens=NULL, FLOAT *HIIdens=NULL,
+			     FLOAT *HeIdens=NULL, FLOAT *HeIIdens=NULL, FLOAT *HeIIIdens=NULL,
+			     FLOAT *edens=NULL,
+			     FLOAT *HMdens=NULL, FLOAT *H2Idens=NULL, FLOAT *H2IIdens=NULL,
+			     FLOAT *DIdens=NULL, FLOAT *DIIdens=NULL, FLOAT *HDIdens=NULL,
+			     FLOAT *metaldens=NULL,
+			     FLOAT *kphHI=NULL, FLOAT *kphHeI=NULL, FLOAT *kphHeII=NULL,
+			     FLOAT *kdissH2I=NULL, FLOAT *gamma=NULL);
    
 /* Baryons & DualEnergyFormalism: Restore consistency between total and
                                   internal energy fields. */

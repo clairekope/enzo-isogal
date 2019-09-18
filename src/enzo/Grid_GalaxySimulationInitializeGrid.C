@@ -307,13 +307,12 @@ if (ComovingCoordinates) {
    metal[i] = 0.02041 * dens[i];
  }
 
- printf("density\n");
+ printf("density temperature\n");
  for (i=0; i<6; ++i){
    printf("%e ", dens[i]);
+   printf("%e ", temp[i]);
+   printf("\n");
  }
- printf("\n");
-
- printf("Arrays prepped\n");
  
  int d = 6;
  
@@ -321,7 +320,7 @@ if (ComovingCoordinates) {
 			     velx, vely, velz, HIdens, HIIdens,
 			     HeIdens, HeIIdens, HeIIIdens, edens,
 			     HMdens, H2Idens, H2IIdens,
-			     nullptr, nullptr, nullptr,
+			     NULL, NULL, NULL,
 			     metal);
 
  printf("Cooling Rates: (code units)\n");

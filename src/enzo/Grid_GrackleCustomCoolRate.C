@@ -39,57 +39,7 @@ int GetUnits(float *DensityUnits, float *LengthUnits,
 	     float *VelocityUnits, FLOAT Time);
 int RadiationFieldCalculateRates(FLOAT Time);
 int FindField(int field, int farray[], int numfields);
-int GadgetCoolingTime(float *d, float *e, float *ge, 
-		      float *u, float *v, float *w,
-		      float *cooltime,
-		      int *in, int *jn, int *kn, int *iexpand, 
-		      hydro_method *imethod, int *idual, int *idim,
-		      int *is, int *js, int *ks, int *ie, int *je, 
-		      int *ke, float *dt, float *aye,
-		      float *fh, float *utem, float *uxyz, 
-		      float *uaye, float *urho, float *utim,
-		      float *gamma);
 
-extern "C" void FORTRAN_NAME(cool_multi_time)(
-	float *d, float *e, float *ge, float *u, float *v, float *w, float *de,
-	float *HI, float *HII, float *HeI, float *HeII, float *HeIII,
-	float *cooltime, int *coolonly,
-	int *in, int *jn, int *kn, int *nratec, int *iexpand,
-	hydro_method *imethod,
-        int *idual, int *ispecies, int *imetal, int *imcool, int *idust, int *idim,
-	int *is, int *js, int *ks, int *ie, int *je, int *ke, int *ih2co,
-	int *ipiht, int *igammah,
-	float *dt, float *aye, float *redshift, float *temstart, float *temend,
-	float *utem, float *uxyz, float *uaye, float *urho, float *utim,
-	float *eta1, float *eta2, float *gamma, float *z_solar,
-	float *ceHIa, float *ceHeIa, float *ceHeIIa, float *ciHIa, float *ciHeIa,
-	float *ciHeISa, float *ciHeIIa, float *reHIIa, float *reHeII1a,
-	float *reHeII2a, float *reHeIIIa, float *brema, float *compa, float *gammaha,
-	float *comp_xraya, float *comp_temp, float *piHI, float *piHeI, float *piHeII,
-	float *HM, float *H2I, float *H2II, float *DI, float *DII, float *HDI, float *metal,
-	float *hyd01ka, float *h2k01a, float *vibha, float *rotha, float *rotla,
-	float *gpldl, float *gphdl, float *HDltea, float *HDlowa,
-	float *gaHIa, float *gaH2a, float *gaHea, float *gaHpa, float *gaela,
-	float *gasgra, float *metala, int *n_xe, float *xe_start, float *xe_end,
-	float *inutot, int *iradfield, int *nfreq, int *imetalregen,
-	int *iradshield, float *avgsighp, float *avgsighep, float *avgsighe2p,
-	int *iradtrans, float *photogamma,
-	int *ih2optical, int *iciecool, float *ciecoa,
- 	int *icmbTfloor, int *iClHeat,
- 	float *clEleFra, int *clGridRank, int *clGridDim,
- 	float *clPar1, float *clPar2, float *clPar3, float *clPar4, float *clPar5,
- 	int *clDataSize, float *clCooling, float *clHeating);
-
-extern "C" void FORTRAN_NAME(cool_time)(
-	float *d, float *e, float *ge, float *u, float *v, float *w,
-           float *cooltime,
-	int *in, int *jn, int *kn, int *nratec, int *iexpand,
-	hydro_method *imethod, int *idual, int *idim, int *igammah,
-	int *is, int *js, int *ks, int *ie, int *je, int *ke,
-	float *dt, float *aye, float *temstart, float *temend,
-	float *fh, float *utem, float *urho, 
-	float *eta1, float *eta2, float *gamma, float *coola, float *gammaha, float *mu);
- 
 int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
 				float *dens, float *thrmeng,
 				float *velx, float *vely, float *velz,
@@ -142,8 +92,6 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
   float *volumetric_heating_rate = NULL;
   float *specific_heating_rate   = NULL;
 
-  float *cooling_time = new float[size];
-  
   // Double check if there's a metal field when we have metal cooling
   int metal_cooling = MetalCooling;
   if (metal_cooling && !metaldens) {
@@ -153,13 +101,20 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
   }
   printf("Setup Grackle\n"); 
   Eint32 *g_grid_dimension, *g_grid_start, *g_grid_end;
-  g_grid_dimension = new Eint32[rank];
-  g_grid_start = new Eint32[rank];
-  g_grid_end = new Eint32[rank];
-  for (i = 0; i < GridRank; i++) {
+  g_grid_dimension = new Eint32[3];
+  g_grid_start = new Eint32[3];
+  g_grid_end = new Eint32[3];
+
+  // Fortran code will act as if there are 3 dimensions regardless
+  for (i = 0; i < rank; i++) {
     g_grid_dimension[i] = (Eint32) dim[i];
-    g_grid_start[i] = (Eint32) 1;
-    g_grid_end[i] = (Eint32) dim[i]+1;
+    g_grid_start[i] = (Eint32) 0;
+    g_grid_end[i] = (Eint32) dim[i];
+  }
+  for (i = rank; i < 3; i++){
+    g_grid_dimension[i] = (Eint32) 0;
+    g_grid_start[i] = (Eint32) 0;
+    g_grid_end[i] = (Eint32) 0;
   }
 
   /* Update units. */
@@ -176,7 +131,7 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
   /* set up the my_fields */
   grackle_field_data my_fields;
 
-  my_fields.grid_rank = (Eint32) GridRank;
+  my_fields.grid_rank = (Eint32) rank;
   my_fields.grid_dimension = g_grid_dimension;
   my_fields.grid_start     = g_grid_start;
   my_fields.grid_end       = g_grid_end;
@@ -210,7 +165,7 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
     }
   }
   
-  //my_fields.metal_density   = metaldens;
+  my_fields.metal_density   = metaldens;
   
   my_fields.volumetric_heating_rate  = volumetric_heating_rate;
   my_fields.specific_heating_rate    = specific_heating_rate;
@@ -240,13 +195,13 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
   }
 #endif // TRANSFER
   printf("Calc cool time\n");
-  if (calculate_cooling_time(&grackle_units, &my_fields, cooling_time) == FAIL) {
+  if (calculate_cooling_time(&grackle_units, &my_fields, cool_rate) == FAIL) {
     ENZO_FAIL("Error in Grackle calculate_cooling_time.\n");
   }
-  printf("Calc cool rate\n");
+
   // Code units
   for (i = 0; i < size; i++) {
-    cool_rate[i] = thrmeng[i] / fabs(cooling_time[i]) / dens[i];
+    cool_rate[i] = thrmeng[i] / fabs(cool_rate[i]) / dens[i];
   }
     
 #ifdef TRANSFER
@@ -256,8 +211,7 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
 
   }
 #endif // TRANSFER
-  printf("Cleanup\n");
-  delete [] cooling_time;
+
   delete [] g_grid_dimension;
   delete [] g_grid_start;
   delete [] g_grid_end;
