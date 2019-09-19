@@ -99,7 +99,7 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
       fprintf(stderr, "Warning: No metal field passed to GrackleCustomCoolRate. Not using metal cooling.\n");
     metal_cooling = FALSE;
   }
-  printf("Setup Grackle\n"); 
+
   Eint32 *g_grid_dimension, *g_grid_start, *g_grid_end;
   g_grid_dimension = new Eint32[3];
   g_grid_start = new Eint32[3];
@@ -109,7 +109,7 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
   for (i = 0; i < rank; i++) {
     g_grid_dimension[i] = (Eint32) dim[i];
     g_grid_start[i] = (Eint32) 0;
-    g_grid_end[i] = (Eint32) dim[i];
+    g_grid_end[i] = (Eint32) dim[i]-1;
   }
   for (i = rank; i < 3; i++){
     g_grid_dimension[i] = (Eint32) 0;
@@ -194,7 +194,7 @@ int grid::GrackleCustomCoolRate(int rank, int *dim, float *cool_rate,
 
   }
 #endif // TRANSFER
-  printf("Calc cool time\n");
+
   if (calculate_cooling_time(&grackle_units, &my_fields, cool_rate) == FAIL) {
     ENZO_FAIL("Error in Grackle calculate_cooling_time.\n");
   }

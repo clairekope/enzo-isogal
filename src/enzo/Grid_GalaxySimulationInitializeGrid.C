@@ -267,23 +267,24 @@ if (ComovingCoordinates) {
 
 //TEST
  printf("Testing cooling rate\n");
- 
- float *rate = new float[6];
- float *dens = new float[6];
- float *temp = new float[6];
- float *velx = new float[6];
- float *vely = new float[6];
- float *velz = new float[6];
- float *HIdens = new float[6];
- float *HIIdens = new float[6];
- float *HeIdens = new float[6];
- float *HeIIdens = new float[6];
- float *HeIIIdens = new float[6];
- float *H2Idens = new float[6];
- float *H2IIdens = new float[6];
- float *HMdens = new float[6];
- float *edens = new float[6];
- float *metal = new float[6];
+ int s = 6;
+
+ float *rate = new float[s];
+ float *dens = new float[s];
+ float *temp = new float[s];
+ float *velx = new float[s];
+ float *vely = new float[s];
+ float *velz = new float[s];
+ float *HIdens = new float[s];
+ float *HIIdens = new float[s];
+ float *HeIdens = new float[s];
+ float *HeIIdens = new float[s];
+ float *HeIIIdens = new float[s];
+ float *H2Idens = new float[s];
+ float *H2IIdens = new float[s];
+ float *HMdens = new float[s];
+ float *edens = new float[s];
+ float *metal = new float[s];
 
  temp[0] = 1e4/TemperatureUnits/((Gamma-1.0)*mu);
  temp[1] = 5e4/TemperatureUnits/((Gamma-1.0)*mu);
@@ -291,8 +292,8 @@ if (ComovingCoordinates) {
  temp[3] = 5e5/TemperatureUnits/((Gamma-1.0)*mu);
  temp[4] = 1e6/TemperatureUnits/((Gamma-1.0)*mu);
  temp[5] = 5e6/TemperatureUnits/((Gamma-1.0)*mu);
- 
- for (i=0; i<6; ++i) {
+
+ for (i=0; i<s; ++i) {
    dens[i] = 1.007947 * 1.660538921e-24 / DensityUnits;
    velx[i] = vely[i] = velz[i] = 0.0;
    HIdens[i] = 1e-20 * dens[i];
@@ -304,28 +305,21 @@ if (ComovingCoordinates) {
    H2IIdens[i] = 1e-20 * dens[i];
    HMdens[i] = 1e-20 * dens[i];
    edens[i] = HIIdens[i] + HeIIdens[i]/4.0 + HeIIIdens[i]/2.0;
-   metal[i] = 0.02041 * dens[i];
+   metal[i] = 0.02041 * dens[i]; //mass fraction
  }
 
- printf("density temperature\n");
- for (i=0; i<6; ++i){
-   printf("%e ", dens[i]);
-   printf("%e ", temp[i]);
-   printf("\n");
- }
- 
- int d = 6;
- 
- this->GrackleCustomCoolRate(1, &d, rate, dens, temp,
+ this->GrackleCustomCoolRate(1, &s, rate, dens, temp,
 			     velx, vely, velz, HIdens, HIIdens,
 			     HeIdens, HeIIdens, HeIIIdens, edens,
 			     HMdens, H2Idens, H2IIdens,
 			     NULL, NULL, NULL,
 			     metal);
 
- printf("Cooling Rates: (code units)\n");
- for (i=0; i<6; ++i)
+ printf("Cooling Rates: (erg cm^3 s^-1)\n");
+ for (i=0; i<s; ++i){
+   rate[i] *= POW(mh,2) * POW(LengthUnits,2) / ( POW(TimeUnits,3) * DensityUnits);
    printf("%e ", rate[i]);
+ }
  printf("\n");
  
  delete [] rate;
@@ -340,6 +334,10 @@ if (ComovingCoordinates) {
  delete [] HeIIdens;
  delete [] HeIIIdens;
  delete [] edens;
+ delete [] HMdens;
+ delete [] H2Idens;
+ delete [] H2IIdens;
+ delete [] metal;
 
  exit(0);
 // END TEST
