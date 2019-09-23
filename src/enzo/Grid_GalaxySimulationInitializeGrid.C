@@ -33,6 +33,7 @@
 #define pi (3.14159)
 #define mh (1.67e-24)           //Mass of Hydrogen [g]
 #define kboltz (1.381e-16)      //Boltzmann's Constant [ergK-1]
+#define kboltzKeV (8.617e-8)
 #define mu (0.6)
 #define CM_PER_KM (1.0e5)
 #define CM_PER_KPC (3.0856e21)
@@ -1298,7 +1299,7 @@ float HaloGasTemperature(FLOAT R){
 
     this_entropy = GalaxySimulationGasHaloCoreEntropy * POW(this_radius_kpc, GalaxySimulationGasHaloAlpha);
 
-    return this_entropy * POW(this_number_density, 5./3.) / kboltz; // units of K?
+    return this_entropy * POW(this_number_density, Gamma-1.0) / kboltzKeV; // units of K
     
   } else {
     ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasTemperature().");
