@@ -1298,7 +1298,7 @@ float HaloGasTemperature(FLOAT R){
 
     this_entropy = GalaxySimulationGasHaloCoreEntropy * POW(this_radius_kpc, GalaxySimulationGasHaloAlpha);
 
-    return this_entropy * POW(this_number_density, 5./3.) / kboltz; // units of K?
+    return this_entropy * POW(this_number_density, Gamma-1.0) / kboltz; // units of K?
     
   } else {
     ENZO_FAIL("Grid::GalaxySimulationInitializeGrid - invalid choice of GalaxySimulationGasHalo in HaloGasTemperature().");
