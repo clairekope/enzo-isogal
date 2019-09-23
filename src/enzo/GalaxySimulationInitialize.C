@@ -119,8 +119,11 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   int GalaxySimulationGasHalo;
   FLOAT GalaxySimulationGasHaloScaleRadius,
         GalaxySimulationGasHaloDensity,
+        GalaxySimulationGasHaloDensity2,
         GalaxySimulationGasHaloTemperature,
         GalaxySimulationGasHaloAlpha,
+        GalaxySimulationGasHaloZeta,
+        GalaxySimulationGasHaloZeta2,
         GalaxySimulationGasHaloCoreEntropy,
         GalaxySimulationGasHaloMetallicity,
         GalaxySimulationDiskMetallicityEnhancementFactor;
@@ -156,8 +159,11 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasHalo            = 0; // uniform halo w/ densicm and UniformTemperature
   GalaxySimulationGasHaloScaleRadius = .001; // Mpc
   GalaxySimulationGasHaloDensity     = 1.8e-27; // cgs
+  GalaxySimulationGasHaloDensity2    = 0.0; // cgs
   GalaxySimulationGasHaloTemperature = 1.0e+6;  // Kelvin
   GalaxySimulationGasHaloAlpha       = 2.0/3.0;  // unitless
+  GalaxySimulationGasHaloZeta        = 0;
+  GalaxySimulationGasHaloZeta2       = 0;
   GalaxySimulationGasHaloCoreEntropy = 5.0;  // keV cm^2
   GalaxySimulationGasHaloMetallicity = 0.1; // Zsun
   GalaxySimulationGasHaloRotation    = 0; // off
@@ -227,10 +233,16 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationGasHaloScaleRadius);
     ret += sscanf(line, "GalaxySimulationGasHaloDensity = %"FSYM,
 		  &GalaxySimulationGasHaloDensity);
+    ret += sscanf(line, "GalaxySimulationGasHaloDensity2 = %"FSYM,
+		  &GalaxySimulationGasHaloDensity2);
     ret += sscanf(line, "GalaxySimulationGasHaloTemperature = %"FSYM,
 		  &GalaxySimulationGasHaloTemperature);
     ret += sscanf(line, "GalaxySimulationGasHaloAlpha = %"FSYM,
 		  &GalaxySimulationGasHaloAlpha);
+    ret += sscanf(line, "GalaxySimulationGasHaloZeta = %"FSYM,
+		  &GalaxySimulationGasHaloZeta);
+    ret += sscanf(line, "GalaxySimulationGasHaloZeta2 = %"FSYM,
+		  &GalaxySimulationGasHaloZeta2);
     ret += sscanf(line, "GalaxySimulationGasHaloCoreEntropy = %"FSYM,
 		  &GalaxySimulationGasHaloCoreEntropy);
     ret += sscanf(line, "GalaxySimulationGasHaloMetallicity = %"FSYM,
@@ -313,12 +325,15 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationDiskTemperature, 
 				GalaxySimulationInitialTemperature,
 				GalaxySimulationUniformDensity,
-                GalaxySimulationEquilibrateChem,
+				GalaxySimulationEquilibrateChem,
 				GalaxySimulationGasHalo,
 				GalaxySimulationGasHaloScaleRadius,
 				GalaxySimulationGasHaloDensity,
+				GalaxySimulationGasHaloDensity2,
 				GalaxySimulationGasHaloTemperature,
 				GalaxySimulationGasHaloAlpha,
+				GalaxySimulationGasHaloZeta,
+				GalaxySimulationGasHaloZeta2,
 				GalaxySimulationGasHaloCoreEntropy,
 				GalaxySimulationGasHaloMetallicity,
 				GalaxySimulationGasHaloRotation,
@@ -390,8 +405,11 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationGasHalo,
 				GalaxySimulationGasHaloScaleRadius,
 				GalaxySimulationGasHaloDensity,
+				GalaxySimulationGasHaloDensity2,
 				GalaxySimulationGasHaloTemperature,
 				GalaxySimulationGasHaloAlpha,
+				GalaxySimulationGasHaloZeta,
+				GalaxySimulationGasHaloZeta2,
 				GalaxySimulationGasHaloCoreEntropy,
 				GalaxySimulationGasHaloMetallicity,
 				GalaxySimulationGasHaloRotation,
@@ -592,10 +610,16 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
      GalaxySimulationGasHaloScaleRadius);
    fprintf(Outfptr, "GalaxySimulationGasHaloDensity = %"GOUTSYM"\n",
      GalaxySimulationGasHaloDensity);
+   fprintf(Outfptr, "GalaxySimulationGasHaloDensity2 = %"GOUTSYM"\n",
+     GalaxySimulationGasHaloDensity2);
    fprintf(Outfptr, "GalaxySimulationGasHaloTemperature = %"GOUTSYM"\n",
      GalaxySimulationGasHaloTemperature);
    fprintf(Outfptr, "GalaxySimulationGasHaloAlpha = %"GOUTSYM"\n",
      GalaxySimulationGasHaloAlpha);
+   fprintf(Outfptr, "GalaxySimulationGasHaloZeta = %"GOUTSYM"\n",
+     GalaxySimulationGasHaloZeta);
+   fprintf(Outfptr, "GalaxySimulationGasHaloZeta2 = %"GOUTSYM"\n",
+     GalaxySimulationGasHaloZeta2);
    fprintf(Outfptr, "GalaxySimulationGasHaloCoreEntropy = %"GOUTSYM"\n",
      GalaxySimulationGasHaloCoreEntropy);
    fprintf(Outfptr, "GalaxySimulationGasHaloMetallicity = %"GOUTSYM"\n",
