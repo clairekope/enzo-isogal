@@ -49,7 +49,7 @@ int GetUnits(float *DensityUnits, float *LengthUnits,
        float *TemperatureUnits, float *TimeUnits,
        float *VelocityUnits, double *MassUnits, FLOAT Time);
 
-int ReadEquilibriumTable(const char * name, FLOAT Time);
+int ReadEquilibriumTable(char * name, FLOAT Time);
 
 int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr, 
 			  HierarchyEntry &TopGrid, TopGridData &MetaData, ExternalBoundary &Exterior)
@@ -127,7 +127,9 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
         GalaxySimulationGasHaloCoreEntropy,
         GalaxySimulationGasHaloMetallicity,
         GalaxySimulationDiskMetallicityEnhancementFactor;
-        
+  char GalaxySimulationEquilibriumFile[MAX_LINE_LENGTH] = "equilibrium_table_50.h5"; 
+
+  
   int GalaxySimulationGasHaloRotation;
   FLOAT GalaxySimulationGasHaloRotationScaleVelocity,
         GalaxySimulationGasHaloRotationScaleRadius,
@@ -155,7 +157,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasMass            = 4.0e10;
   GalaxySimulationGalaxyMass         = 1.0e12;
   GalaxySimulationDiskTemperature    = 1000.0;
-  GalaxySimulationEquilibrateChem = 0; // bool
+  GalaxySimulationEquilibrateChem    = 0; // bool
   GalaxySimulationGasHalo            = 0; // uniform halo w/ densicm and UniformTemperature
   GalaxySimulationGasHaloScaleRadius = .001; // Mpc
   GalaxySimulationGasHaloDensity     = 1.8e-27; // cgs
@@ -185,7 +187,9 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationUniformCR = .01;
 
   /* read input from file */
-
+  char *dummy = new char[MAX_LINE_LENGTH];
+  dummy[0] = 0;
+      
   while (fgets(line, MAX_LINE_LENGTH, fptr) != NULL) {
     
     ret = 0;
@@ -227,6 +231,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationDiskTemperature);
     ret += sscanf(line, "GalaxySimulationEquilibrateChem = %"FSYM,
 		  &GalaxySimulationEquilibrateChem);
+    if (sscanf(line, "GalaxySimulationEquilibriumFile = %s", dummy) == 1) {
+      strcpy(GalaxySimulationEquilibriumFile, dummy);
+      ret++;
+    }
     ret += sscanf(line, "GalaxySimulationGasHalo = %"ISYM,
 		  &GalaxySimulationGasHalo);
     ret += sscanf(line, "GalaxySimulationGasHaloScaleRadius = %"FSYM,
@@ -280,7 +288,9 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   } // end input from parameter file
 
   if (GalaxySimulationEquilibrateChem)
-    ReadEquilibriumTable("equilibrium_table_50.h5", MetaData.Time);
+    ReadEquilibriumTable(GalaxySimulationEquilibriumFile, MetaData.Time);
+
+  delete [] dummy;
 
   /* fix wind values wrt units */
   float DensityUnits, LengthUnits, TemperatureUnits, TimeUnits, VelocityUnits;

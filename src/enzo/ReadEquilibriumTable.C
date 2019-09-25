@@ -19,7 +19,7 @@ int GetUnits(float *DensityUnits, float *LengthUnits,
 	     float *VelocityUnits, FLOAT Time);
 
 // Read Equilibrium Table
-int ReadEquilibriumTable(const char * name, FLOAT Time)
+int ReadEquilibriumTable(char* name, FLOAT Time)
 {
 
   float TemperatureUnits = 1, DensityUnits = 1, LengthUnits = 1, 
