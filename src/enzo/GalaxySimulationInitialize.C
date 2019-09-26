@@ -125,6 +125,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
         GalaxySimulationGasHaloZeta,
         GalaxySimulationGasHaloZeta2,
         GalaxySimulationGasHaloCoreEntropy,
+        GalaxySimulationGasHaloRatio,
         GalaxySimulationGasHaloMetallicity,
         GalaxySimulationDiskMetallicityEnhancementFactor;
   char GalaxySimulationEquilibriumFile[MAX_LINE_LENGTH] = "equilibrium_table_50.h5"; 
@@ -167,6 +168,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationGasHaloZeta        = 0;
   GalaxySimulationGasHaloZeta2       = 0;
   GalaxySimulationGasHaloCoreEntropy = 5.0;  // keV cm^2
+  GalaxySimulationGasHaloRatio       = 10; // ratio of cooling time to freefall time
   GalaxySimulationGasHaloMetallicity = 0.1; // Zsun
   GalaxySimulationGasHaloRotation    = 0; // off
   GalaxySimulationGasHaloRotationScaleVelocity = 180.0; // km/s
@@ -253,6 +255,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationGasHaloZeta2);
     ret += sscanf(line, "GalaxySimulationGasHaloCoreEntropy = %"FSYM,
 		  &GalaxySimulationGasHaloCoreEntropy);
+    ret += sscanf(line, "GalaxySimulationGasHaloRatio = %"FSYM,
+		  &GalaxySimulationGasHaloRatio);
     ret += sscanf(line, "GalaxySimulationGasHaloMetallicity = %"FSYM,
 		  &GalaxySimulationGasHaloMetallicity);
     ret += sscanf(line, "GalaxySimulationGasHaloRotation = %"ISYM,
@@ -345,6 +349,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationGasHaloZeta,
 				GalaxySimulationGasHaloZeta2,
 				GalaxySimulationGasHaloCoreEntropy,
+ 			        GalaxySimulationGasHaloRatio,
 				GalaxySimulationGasHaloMetallicity,
 				GalaxySimulationGasHaloRotation,
 				GalaxySimulationGasHaloRotationScaleVelocity,
@@ -421,6 +426,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationGasHaloZeta,
 				GalaxySimulationGasHaloZeta2,
 				GalaxySimulationGasHaloCoreEntropy,
+				GalaxySimulationGasHaloRatio,
 				GalaxySimulationGasHaloMetallicity,
 				GalaxySimulationGasHaloRotation,
 				GalaxySimulationGasHaloRotationScaleVelocity,

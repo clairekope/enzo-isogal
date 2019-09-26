@@ -98,7 +98,8 @@ double GalaxySimulationGasHaloScaleRadius,
   GalaxySimulationGasHaloCoreEntropy, GalaxySimulationGasHaloGalaxyMass,
   GalaxySimulationGasHaloDMConcentration,
   GalaxySimulationGasHaloMetallicity,
-  GalaxySimulationDiskMetallicityEnhancementFactor;
+  GalaxySimulationDiskMetallicityEnhancementFactor,
+  GalaxySimulationGasHaloRatio;
 
 /* struct to carry around data required for circumgalactic media
    if we need to generate radial profiles of halo quantities via 
@@ -141,6 +142,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT GasHaloZeta,
            FLOAT GasHaloZeta2,
            FLOAT GasHaloCoreEntropy,
+	   FLOAT GasHaloRatio,
            FLOAT GasHaloMetallicity,
            int   UseHaloRotation,
            FLOAT RotationScaleVelocity,
@@ -191,6 +193,7 @@ GalaxySimulationGasHaloAlpha = GasHaloAlpha;  // power-law index; unitless
 GalaxySimulationGasHaloZeta = GasHaloZeta;
 GalaxySimulationGasHaloZeta2 = GasHaloZeta2;
 GalaxySimulationGasHaloCoreEntropy = GasHaloCoreEntropy;  // power-law index; unitless
+GalaxySimulationGasHaloRatio = GasHaloRatio; // ratio of cooling time to freefall time
 GalaxySimulationGasHaloGalaxyMass = GalaxyMass;
 GalaxySimulationGasHaloDMConcentration = DMConcentration;
 GalaxySimulationGasHaloMetallicity = GasHaloMetallicity; // Zsun
@@ -1469,6 +1472,8 @@ double halo_S_of_r(double r, double n, grid* Grid){
     
     Grid->GrackleCustomCoolRate(1, &dim, &Lambda, &dens, &therm, &vx, &vy, &vz, &hi, &hii,
 			  &hei, &heii, &heiii, &hm, &h2i, &h2ii, &di, &dii, &hdi, &metal);
+
+    double S_precip = POW(2*mu*mh, 1./3.) * POW(r*Lambda*GalaxySimulationGasHaloRatio/3.0, 2./3.);
     
   } else {
     ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
