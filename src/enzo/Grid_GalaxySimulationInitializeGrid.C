@@ -33,7 +33,7 @@
 #define pi (3.14159)
 #define mh (1.67e-24)           //Mass of Hydrogen [g]
 #define kboltz (1.381e-16)      //Boltzmann's Constant [ergK-1]
-#define kboltzKeV (8.617e-8)
+#define kboltzKeV (8.617e-8)    // keV per K
 #define mu (0.6)
 #define CM_PER_KM (1.0e5)
 #define CM_PER_KPC (3.0856e21)
@@ -114,13 +114,15 @@ struct CGMdata CGM_data;
 /* declarations for a bunch of functions needed to generate radial profiles
    of halo quantities via numerical integration - see the actual functions for
    descriptions. */
-double halo_S_of_r(double r, double n);
-double halo_S_of_r(double r, double r_vir, grid* Grid);
+double halo_S_of_r(double r);
+double halo_S_of_r(double r, grid* Grid);
 double halo_dSdr(double r, double n);
 double halo_dn_dr(double r, double n);
-double halo_dP_dr(double r, double P, double r_vir, grid* Grid);
+double halo_dP_dr(double r, double P, grid* Grid);
 double halo_g_of_r(double r);
+double halo_mod_g_of_r(double r);
 double halo_galmass_at_r(double r);
+double halo_mod_galmass_at_r(double r);
 void halo_init(grid* Grid);
 void halo_clean(void);
 
@@ -384,7 +386,7 @@ RotationScaleRadius /= LengthUnits;  // cm to code length
     for circumgalactic medium if needed (i.e., for CGM profiles that
     require integration to get quantities we care about. */
 halo_init(this);
- 
+ exit(0);
 /* compute size of fields */
 size = 1;
 for (dim = 0; dim < GridRank; dim++)
@@ -1341,11 +1343,7 @@ void halo_init(grid* Grid){
   Rvir = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
 
   CGM_data.R_outer = Rvir;  // integrate out to the virial radius of halo
-  printf("%e\n", CGM_data.R_outer);
-  if (GalaxySimulationGasHalo == 6)
-    CGM_data.R_outer *= 4;
-  printf("%e\n", CGM_data.R_outer);
-  
+
   CGM_data.dr = CGM_data.R_outer / double(CGM_data.nbins);  // stepsize for RK4 integration and radial bins
   
   if (GalaxySimulationGasHalo != 6){
@@ -1384,7 +1382,7 @@ void halo_init(grid* Grid){
       this_radius += dr;  // new radius
 
       // calculate temperature at this radius using known entropy 
-      temperature = halo_S_of_r(this_radius, this_n) * POW(this_n,Gamma-1.0);
+      temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
       
       // store everything in the struct
       index = int(this_radius/dr+1.0e-3);    
@@ -1411,7 +1409,7 @@ void halo_init(grid* Grid){
       this_radius += dr;  // new radius
       
       // calculate temperature at this radius using known entropy 
-      temperature = halo_S_of_r(this_radius, this_n) * POW(this_n,Gamma-1.0);
+      temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
 
       // store everything in the struct
       index = int(this_radius/(-1.0*dr)+1.0e-3);
@@ -1428,79 +1426,55 @@ void halo_init(grid* Grid){
     /* Integrate pressure assuming HSE & S(r) from Voit 2019, then convert to n & T,
        instead of integrating n(r) directly as with methods 4 & 5. This makes the boundary
        condition easier to handle.*/
-    double dr, vcirc2_max;
+    double dr, rmax, vcirc2_max;
     double this_press, this_ent, this_radius;//, this_n;
 
     // boundary condition & quantities for integration
     dr = -1.0*CGM_data.dr;
     this_radius = Rvir;
-    this_ent = halo_S_of_r(this_radius, Rvir, Grid) / KEV_PER_ERG; // keV*cm^2 to erg*cm^2
-    vcirc2_max = 1.45 * GravConst * halo_galmass_at_r(Rvir)/Rvir; // vcirc_vir = 0.83vcirc_max
-    this_press = POW(0.25*mu*mh*vcirc2_max*POW(this_ent, -1./Gamma),
-		     Gamma/(Gamma-1.)); // mu=0.6 or 1.22?
+    this_ent = halo_S_of_r(this_radius, Grid); // in erg*cm^2
+
+    rmax = 2.163*Rvir/GalaxySimulationGasHaloDMConcentration;
+    vcirc2_max = GravConst * halo_mod_galmass_at_r(rmax)/rmax;
+    this_press = POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
+		     Gamma/(Gamma-1.));
 
     // set the bin that we start at (otherwise it doesn't get set!)
     index = int(this_radius/(-1.0*dr)+1.0e-3);
-    CGM_data.n_rad[index] = POW(this_press/this_ent, 1./Gamma);
+    CGM_data.n_rad[index] = 2 * POW(this_press/this_ent, 1./Gamma); // n_e ~ n_i
     CGM_data.T_rad[index] = POW( POW(this_press, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     CGM_data.rad[index] = this_radius;
+
+    printf("radius entropy pressure density temperature\n");
+    printf("%e %e %e %e %e\n",
+	   this_radius/CM_PER_KPC, this_ent*KEV_PER_ERG, this_press, CGM_data.n_rad[index], CGM_data.T_rad[index]);
 
     // integrate inward from Rvir    
     while(this_radius > 0.0){
       
       // calculate RK4 coefficients.
-      k1 = halo_dP_dr(this_radius,          this_press,             Rvir, Grid);
-      k2 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k1, Rvir, Grid);
-      k3 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k2, Rvir, Grid);
-      k4 = halo_dP_dr(this_radius + dr,     this_press + dr*k3,     Rvir, Grid);
-
+      k1 = halo_dP_dr(this_radius,          this_press,             Grid);
+      k2 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k1, Grid);
+      k3 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k2, Grid);
+      k4 = halo_dP_dr(this_radius + dr,     this_press + dr*k3,     Grid);
+      
       // update radius, pressure, entropy
       this_radius += dr;  // new radius
       this_press += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4); // P @ new radius
-      this_ent = halo_S_of_r(this_radius, Rvir, Grid) / KEV_PER_ERG; // entropy @ new radius
-      
+      this_ent = halo_S_of_r(this_radius, Grid); // entropy @ new radius
+
       // store density and temperature in the struct
       index = int(this_radius/(-1.0*dr)+1.0e-3);
-      //printf("    %d  %e\n", index, this_press);
       if (index >= 0){
-	CGM_data.n_rad[index] = POW(this_press/this_ent, 1./Gamma);
+	CGM_data.n_rad[index] = 2 * POW(this_press/this_ent, 1./Gamma);
 	CGM_data.T_rad[index] = POW( POW(this_press, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
 	CGM_data.rad[index] = this_radius;
       }
-    }
-    printf("Integrating outward\n");
-    // Now integrate beyond Rvir
-    dr = CGM_data.dr;
-    this_radius = Rvir;
-    this_ent = halo_S_of_r(this_radius, Rvir, Grid) / KEV_PER_ERG; // keV*cm^2 to erg*cm^2
-    vcirc2_max = 1.45 * GravConst * halo_galmass_at_r(Rvir)/Rvir; // vcirc_vir = 0.83vcirc_max
-    this_press = POW(0.25*mu*mh*vcirc2_max*POW(this_ent, -1./Gamma),
-		     Gamma/(Gamma-1.)); // mu=0.6 or 1.22?
-    
-    while(this_radius < CGM_data.R_outer){
-       // calculate RK4 coefficients.
-      k1 = halo_dP_dr(this_radius,          this_press,             Rvir, Grid);
-      k2 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k1, Rvir, Grid);
-      k3 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k2, Rvir, Grid);
-      k4 = halo_dP_dr(this_radius + dr,     this_press + dr*k3,     Rvir, Grid);
-
-      // update radius, pressure, entropy
-      this_radius += dr;  // new radius
-      this_press += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4); // P @ new radius
-      this_ent = halo_S_of_r(this_radius, Rvir, Grid) / KEV_PER_ERG; // entropy @ new radius
       
-      // store density and temperature in the struct
-      index = int(this_radius/dr+1.0e-3);
-
-      if (index > 8191) break;//printf("%d\n",index);
+      printf("%e %e %e %e %e\n",
+	   this_radius/CM_PER_KPC, this_ent*KEV_PER_ERG, this_press, CGM_data.n_rad[index], CGM_data.T_rad[index]);
       
-      CGM_data.n_rad[index] = POW(this_press/this_ent, 1./Gamma);
-      CGM_data.T_rad[index] = POW( POW(this_press, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
-      CGM_data.rad[index] = this_radius;
-
     }
-    
-    printf("done integrating\n");
   }
 
   // this integration acts a little squirrelly around r=0 because the mass values are garbage.  Cheap fix.
@@ -1529,7 +1503,7 @@ void halo_clean(void){
 
    Input is radius in CGS units.  output is entropy in CGS units (Kelvin cm^2) 
 */
-double halo_S_of_r(double r, double n){
+double halo_S_of_r(double r){
 
   double Tvir, n0, r0, Smin, S0;
 
@@ -1554,20 +1528,29 @@ double halo_S_of_r(double r, double n){
 
 }
 
-/* More complex entropy profile from Voit 2019 that requires calculation of the cooling function.*/
-//double halo_S_of_r(double r, double n, double r_vir, grid* Grid){
-double halo_S_of_r(double r, double r_vir, grid* Grid){
+/* More complex entropy profile from Voit 2019 that requires calculation of the cooling function.
+   This one returns entropy in erg cm^2 instead of K cm^2 */
+double halo_S_of_r(double r, grid* Grid){
   if (GalaxySimulationGasHalo == 6){
-  
-    double vcirc2 = GravConst * halo_galmass_at_r(r) / r;
-    double vcirc2_vir = GravConst * halo_galmass_at_r(r_vir) / r_vir;
+
+    double M, C, r_vir, r_max, rho_crit = 1.8788e-29*0.49; ;
+    double vcirc2, vcirc2_max;
+    double Tgrav, Tgrav_therm;
     
-    double Tgrav = mu*mh * vcirc2 / kboltz; // 2x gravitational "temperature"
-    double Tgrav_therm = Tgrav / TemperatureUnits / ((Gamma-1.0)*mu); // code
+    M = GalaxySimulationGasHaloGalaxyMass * SolarMass;  // halo total mass in CGS
+    C = GalaxySimulationGasHaloDMConcentration;  // concentration parameter for NFW halo
+    r_vir = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+    r_max = 2.163 * r_vir/C;
+    
+    vcirc2 = GravConst * halo_mod_galmass_at_r(r) / r;
+    vcirc2_max = GravConst * halo_mod_galmass_at_r(r_max) / r_max;
+    
+    Tgrav = mu*mh * vcirc2 / kboltz; // 2x gravitational "temperature"
+    Tgrav_therm = Tgrav / TemperatureUnits / ((Gamma-1.0)*mu); // code
   
     /* Calculate the cooling function Lambda using Grackle */
     double Lambda;
-    double dens = 1.22*mh/DensityUnits; //n*mu*mh; // code
+    double dens = mh/DensityUnits; // code
     double vx=0, vy=0, vz=0;
     double hi, hii, hei, heii, heiii, de, hm, h2i, h2ii, di, dii, hdi, metal; // species
     int dim=1;
@@ -1575,8 +1558,6 @@ double halo_S_of_r(double r, double r_vir, grid* Grid){
     // setup_chem has densities in code, temperature in K
     setup_chem(dens, Tgrav, EquilibrateChem, de, hi, hii, hei, heii, heiii, hm, h2i, h2ii, di, dii, hdi);
     metal = GalaxySimulationGasHaloMetallicity * CoolData.SolarMetalFractionByMass * dens;
-    //    printf("  dens: %e de: %e hi: %e hii: %e hei: %e heii: %e heiii: %e hm: %e h2i: %e h2ii: %e di: %e dii: %e hdi: %e metal: %e \n",
-    //	   dens, de, hi, hii, hei, heii, heiii, hm, h2i, h2ii, di, dii, hdi, metal);
     
     Grid->GrackleCustomCoolRate(1, &dim, &Lambda,
 				&dens, &Tgrav_therm,
@@ -1593,9 +1574,10 @@ double halo_S_of_r(double r, double r_vir, grid* Grid){
 
     /* Calculate entropy S(r) */
     double S_precip = POW(2*mu*mh, 1./3.) * POW(r*Lambda*GalaxySimulationGasHaloRatio/3.0, 2./3.);
-    double S_nfw = 39. * 1.45*vcirc2_vir/1e10/4e4 * POW(r/r_vir, 1.1); // See Voit 19 Eqn 10 for assumptions
+    double S_nfw = 39. * vcirc2_max/1e10/4e4 * POW(r/r_vir, 1.1); // See Voit 19 Eqn 10 for assumptions
 
-    return S_precip + S_nfw;
+    //return (S_nfw + S_precip) / KEV_PER_ERG;
+    return 3.6*POW(r/CM_PER_KPC, 0.71) / KEV_PER_ERG;
     
   } else {
     ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
@@ -1639,12 +1621,12 @@ double halo_dSdr(double r, double n){
 double halo_dn_dr(double r, double n){
   
   return -1.0*( n*1.22*mh*halo_g_of_r(r) + kboltz*POW(n,Gamma)*halo_dSdr(r,n) ) /
-    ( Gamma * kboltz * halo_S_of_r(r,n) * POW(n, Gamma-1));
+    ( Gamma * kboltz * halo_S_of_r(r) * POW(n, Gamma-1));
 }
 
-double halo_dP_dr(double r, double P, double r_vir, grid* Grid) {
-  return -1.0 * 1.22*mh*halo_g_of_r(r) * POW(P / (halo_S_of_r(r,r_vir,Grid)/KEV_PER_ERG),
-					     1./Gamma);
+double halo_dP_dr(double r, double P, grid* Grid) {
+  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh*POW( P / halo_S_of_r(r,Grid),
+						  1./Gamma);
 }
 
 /* halo gravitational acceleration as a function of radius.
@@ -1653,6 +1635,10 @@ double halo_dP_dr(double r, double P, double r_vir, grid* Grid) {
    acceleration in CGS units.  */
 double halo_g_of_r(double r){
   return GravConst*halo_galmass_at_r(r)/(r*r); 
+}
+
+double halo_mod_g_of_r(double r){
+  return GravConst*halo_mod_galmass_at_r(r)/(r*r);
 }
 
 /* halo galaxy mass at a given radius, using user-defined global parameters for galaxy
@@ -1680,6 +1666,30 @@ double halo_galmass_at_r(double r){
 
   return M_within_r;
   
+}
+
+/* A modified NFW halo, where small radii (r <= 2.163*Rs) have enclosed mass
+   that satisfies v_circ(r) = v_circ,max = v_circ(2.163*Rs). Beyond this
+   boundary radius, the enclosed mass is that of a standard NFW halo.
+*/
+double halo_mod_galmass_at_r(double r){
+
+  double M, C, Rvir, Rs, Rmax;
+  double rho_crit = 1.8788e-29*0.49;
+  
+  M = GalaxySimulationGasHaloGalaxyMass * SolarMass;  // halo total mass in CGS
+  C = GalaxySimulationGasHaloDMConcentration;  // concentration parameter for NFW halo
+  
+  Rvir = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+  Rs = Rvir/C;  // scale radius of NFW halo in CGS
+  Rmax = 2.163*Rs;
+  
+  if (r <= Rmax) {
+    return r / Rmax * halo_galmass_at_r(Rmax);
+  }
+  else {
+    return halo_galmass_at_r(r);
+  }
 }
 
 /* -------------------- END OF Routines used for initializing the circumgalactic medium -------------------- */
