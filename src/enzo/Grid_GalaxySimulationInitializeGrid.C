@@ -616,8 +616,8 @@ for (k = 0; k < GridDimension[2]; k++)
         if (disk_temp == init_temp)
           disk_temp = DiskTemperature; 
         temperature = disk_temp;
-        if( temperature > 1.0e7 )
-          temperature = init_temp;
+        //if( temperature > 1.0e7 )
+        //  temperature = init_temp;
         
         /* Here we're setting the disk to be X times more enriched -- DWS */
         if( UseMetallicityField )
@@ -1213,7 +1213,7 @@ float HaloGasDensity(FLOAT R){
 
     // now get number density using expression above
 
-    T_kev = GalaxySimulationGasHaloTemperature*8.6174e-08;  // halo temperature in keV
+    T_kev = GalaxySimulationGasHaloTemperature*kboltzKeV;  // halo temperature in keV
     n_0 = GalaxySimulationGasHaloDensity / (mu*mh);  // convert n_0 to electron number density 
     S_0 = T_kev / POW(n_0,Gamma-1.0);   // S_0 in units of kev cm^2
 
@@ -1428,7 +1428,8 @@ void halo_init(grid* Grid){
        condition easier to handle.*/
     double dr, rmax, vcirc2_max;
     double this_press, this_ent, this_radius;//, this_n;
-
+    double mu_ratio = 1.1/mu; // mu_e/mu
+    
     // boundary condition & quantities for integration
     dr = -1.0*CGM_data.dr;
     this_radius = Rvir;
@@ -1436,13 +1437,13 @@ void halo_init(grid* Grid){
 
     rmax = 2.163*Rvir/GalaxySimulationGasHaloDMConcentration;
     vcirc2_max = GravConst * halo_mod_galmass_at_r(rmax)/rmax;
-    this_press = POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
+    this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
 		     Gamma/(Gamma-1.));
 
     // set the bin that we start at (otherwise it doesn't get set!)
     index = int(this_radius/(-1.0*dr)+1.0e-3);
-    CGM_data.n_rad[index] = 2 * POW(this_press/this_ent, 1./Gamma); // n_e ~ n_i
-    CGM_data.T_rad[index] = POW( POW(this_press, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
+    CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma); // n_e ~ n_i
+    CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     CGM_data.rad[index] = this_radius;
 
     printf("radius entropy pressure density temperature\n");
@@ -1466,8 +1467,8 @@ void halo_init(grid* Grid){
       // store density and temperature in the struct
       index = int(this_radius/(-1.0*dr)+1.0e-3);
       if (index >= 0){
-	CGM_data.n_rad[index] = 2 * POW(this_press/this_ent, 1./Gamma);
-	CGM_data.T_rad[index] = POW( POW(this_press, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
+	CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
+	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
 	CGM_data.rad[index] = this_radius;
       }
       
@@ -1572,12 +1573,12 @@ double halo_S_of_r(double r, grid* Grid){
     // to cgs
     Lambda = fabs(Lambda) * POW(mh,2) * POW(LengthUnits,2) / ( POW(TimeUnits,3) * DensityUnits);
 
-    /* Calculate entropy S(r) */
+    /* Calculate entropy S(r) in erg cm^2 */
     double S_precip = POW(2*mu*mh, 1./3.) * POW(r*Lambda*GalaxySimulationGasHaloRatio/3.0, 2./3.);
-    double S_nfw = 39. * vcirc2_max/1e10/4e4 * POW(r/r_vir, 1.1); // See Voit 19 Eqn 10 for assumptions
+    double S_nfw = 39. * vcirc2_max/1e10/4e4 * POW(r/r_vir, 1.1) / KEV_PER_ERG; // See Voit 19 Eqn 10 for assumptions
 
-    //return (S_nfw + S_precip) / KEV_PER_ERG;
-    return 3.6*POW(r/CM_PER_KPC, 0.71) / KEV_PER_ERG;
+    return (S_nfw + S_precip);
+    //return 2.6*POW(r/CM_PER_KPC, 0.71) / KEV_PER_ERG;
     
   } else {
     ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
@@ -1625,7 +1626,7 @@ double halo_dn_dr(double r, double n){
 }
 
 double halo_dP_dr(double r, double P, grid* Grid) {
-  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh*POW( P / halo_S_of_r(r,Grid),
+  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh*POW( P/(1.1/mu) / halo_S_of_r(r,Grid),
 						  1./Gamma);
 }
 
