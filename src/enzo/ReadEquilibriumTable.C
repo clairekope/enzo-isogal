@@ -40,7 +40,7 @@ int ReadEquilibriumTable(char* name, FLOAT Time)
 
     if (debug) fprintf(stderr,"Reading from %s.\n",name);
     file_id = H5Fopen(name, H5F_ACC_RDONLY, H5P_DEFAULT);
-    grp_id = H5Gopen(file_id, "data");
+    grp_id = H5Gopen(file_id, "indexer");
     if (grp_id == h5_error) {
       fprintf(stderr, "Can't open data group in %s.\n",name);
     }
@@ -74,8 +74,8 @@ int ReadEquilibriumTable(char* name, FLOAT Time)
 #endif
 
   EquilibriumTable.dim_size = *size; // pointer to int
-  if (debug) fprintf(stderr,"Equilibrium table size (num_elements) is %d\n",
-                      EquilibriumTable.dim_size);
+  if (debug) fprintf(stderr,"Equilibrium table size is %d x %d\n",
+		     EquilibriumTable.dim_size, EquilibriumTable.dim_size);
   delete [] size;
 
   /* get and broadcast the rest of the data */
@@ -85,231 +85,231 @@ int ReadEquilibriumTable(char* name, FLOAT Time)
     if (MultiSpecies) {
       EquilibriumTable.HI = new double[EquilibriumTable.dim_size
                                         * EquilibriumTable.dim_size];
-      dset_id = H5Dopen(file_id, "/data/HI");
+      dset_id = H5Dopen(file_id, "/table/HI");
       if (dset_id == h5_error) {
-        fprintf(stderr,"Can't open /data/HI in %s.\n", name);
+        fprintf(stderr,"Can't open /table/HI in %s.\n", name);
         return FAIL;
       }
       status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                         H5S_ALL, H5P_DEFAULT, EquilibriumTable.HI);
       if (status == h5_error) {
-        fprintf(stderr, "Failed to read /data/HI in %s.\n",name);
+        fprintf(stderr, "Failed to read /table/HI in %s.\n",name);
         return FAIL;
       }
       status = H5Dclose(dset_id);
       if (status == h5_error) {
-        fprintf(stderr,"Failed to close /data/HI in %s.\n",name);
+        fprintf(stderr,"Failed to close /table/HI in %s.\n",name);
         return FAIL;
       }
 
       EquilibriumTable.HII = new double[EquilibriumTable.dim_size
                                         * EquilibriumTable.dim_size];
-      dset_id = H5Dopen(file_id, "/data/HII");
+      dset_id = H5Dopen(file_id, "/table/HII");
       if (dset_id == h5_error) {
-        fprintf(stderr,"Can't open /data/HII in %s.\n", name);
+        fprintf(stderr,"Can't open /table/HII in %s.\n", name);
         return FAIL;
       }
       status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                         H5S_ALL, H5P_DEFAULT, EquilibriumTable.HII);
       if (status == h5_error) {
-        fprintf(stderr, "Failed to read /data/HII in %s.\n",name);
+        fprintf(stderr, "Failed to read /table/HII in %s.\n",name);
         return FAIL;
       }
       status = H5Dclose(dset_id);
       if (status == h5_error) {
-        fprintf(stderr,"Failed to close /data/HII in %s.\n",name);
+        fprintf(stderr,"Failed to close /table/HII in %s.\n",name);
         return FAIL;
       }
 
       EquilibriumTable.HeI = new double[EquilibriumTable.dim_size
                                         * EquilibriumTable.dim_size];
-      dset_id = H5Dopen(file_id, "/data/HeI");
+      dset_id = H5Dopen(file_id, "/table/HeI");
       if (dset_id == h5_error) {
-        fprintf(stderr,"Can't open /data/HeI in %s.\n", name);
+        fprintf(stderr,"Can't open /table/HeI in %s.\n", name);
         return FAIL;
       }
       status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                         H5S_ALL, H5P_DEFAULT, EquilibriumTable.HeI);
       if (status == h5_error) {
-        fprintf(stderr, "Failed to read /data/HeI in %s.\n",name);
+        fprintf(stderr, "Failed to read /table/HeI in %s.\n",name);
         return FAIL;
       }
       status = H5Dclose(dset_id);
       if (status == h5_error) {
-        fprintf(stderr,"Failed to close /data/HeI in %s.\n",name);
+        fprintf(stderr,"Failed to close /table/HeI in %s.\n",name);
         return FAIL;
       }
 
       EquilibriumTable.HeII = new double[EquilibriumTable.dim_size
                                         * EquilibriumTable.dim_size];
-      dset_id = H5Dopen(file_id, "/data/HeII");
+      dset_id = H5Dopen(file_id, "/table/HeII");
       if (dset_id == h5_error) {
-        fprintf(stderr,"Can't open /data/HeII in %s.\n", name);
+        fprintf(stderr,"Can't open /table/HeII in %s.\n", name);
         return FAIL;
       }
       status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                         H5S_ALL, H5P_DEFAULT, EquilibriumTable.HeII);
       if (status == h5_error) {
-        fprintf(stderr, "Failed to read /data/HeII in %s.\n",name);
+        fprintf(stderr, "Failed to read /table/HeII in %s.\n",name);
         return FAIL;
       }
       status = H5Dclose(dset_id);
       if (status == h5_error) {
-        fprintf(stderr,"Failed to close /data/HeII in %s.\n",name);
+        fprintf(stderr,"Failed to close /table/HeII in %s.\n",name);
         return FAIL;
       }
 
       EquilibriumTable.HeIII = new double[EquilibriumTable.dim_size
                                         * EquilibriumTable.dim_size];
-      dset_id = H5Dopen(file_id, "/data/HeIII");
+      dset_id = H5Dopen(file_id, "/table/HeIII");
       if (dset_id == h5_error) {
-        fprintf(stderr,"Can't open /data/HeIII in %s.\n", name);
+        fprintf(stderr,"Can't open /table/HeIII in %s.\n", name);
         return FAIL;
       }
       status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                         H5S_ALL, H5P_DEFAULT, EquilibriumTable.HeIII);
       if (status == h5_error) {
-        fprintf(stderr, "Failed to read /data/HeIII in %s.\n",name);
+        fprintf(stderr, "Failed to read /table/HeIII in %s.\n",name);
         return FAIL;
       }
       status = H5Dclose(dset_id);
       if (status == h5_error) {
-        fprintf(stderr,"Failed to close /data/HeIII in %s.\n",name);
+        fprintf(stderr,"Failed to close /table/HeIII in %s.\n",name);
         return FAIL;
       }
 
       EquilibriumTable.de = new double[EquilibriumTable.dim_size
                                         * EquilibriumTable.dim_size];
-      dset_id = H5Dopen(file_id, "/data/de");
+      dset_id = H5Dopen(file_id, "/table/de");
       if (dset_id == h5_error) {
-        fprintf(stderr,"Can't open /data/de in %s.\n", name);
+        fprintf(stderr,"Can't open /table/de in %s.\n", name);
         return FAIL;
       }
       status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                         H5S_ALL, H5P_DEFAULT, EquilibriumTable.de);
       if (status == h5_error) {
-        fprintf(stderr, "Failed to read /data/de in %s.\n",name);
+        fprintf(stderr, "Failed to read /table/de in %s.\n",name);
         return FAIL;
       }
       status = H5Dclose(dset_id);
       if (status == h5_error) {
-        fprintf(stderr,"Failed to close /data/de in %s.\n",name);
+        fprintf(stderr,"Failed to close /table/de in %s.\n",name);
         return FAIL;
       }
 
       if (MultiSpecies > 1) {
         EquilibriumTable.HM = new double[EquilibriumTable.dim_size
                                           * EquilibriumTable.dim_size];
-        dset_id = H5Dopen(file_id, "/data/HM");
+        dset_id = H5Dopen(file_id, "/table/HM");
         if (dset_id == h5_error) {
-          fprintf(stderr,"Can't open /data/HM in %s.\n", name);
+          fprintf(stderr,"Can't open /table/HM in %s.\n", name);
           return FAIL;
         }
         status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                           H5S_ALL, H5P_DEFAULT, EquilibriumTable.HM);
         if (status == h5_error) {
-          fprintf(stderr, "Failed to read /data/HM in %s.\n",name);
+          fprintf(stderr, "Failed to read /table/HM in %s.\n",name);
           return FAIL;
         }
         status = H5Dclose(dset_id);
         if (status == h5_error) {
-          fprintf(stderr,"Failed to close /data/HM in %s.\n",name);
+          fprintf(stderr,"Failed to close /table/HM in %s.\n",name);
           return FAIL;
         }
 
         EquilibriumTable.H2I = new double[EquilibriumTable.dim_size
                                           * EquilibriumTable.dim_size];
-        dset_id = H5Dopen(file_id, "/data/H2I");
+        dset_id = H5Dopen(file_id, "/table/H2I");
         if (dset_id == h5_error) {
-          fprintf(stderr,"Can't open /data/H2I in %s.\n", name);
+          fprintf(stderr,"Can't open /table/H2I in %s.\n", name);
           return FAIL;
         }
         status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                           H5S_ALL, H5P_DEFAULT, EquilibriumTable.H2I);
         if (status == h5_error) {
-          fprintf(stderr, "Failed to read /data/H2I in %s.\n",name);
+          fprintf(stderr, "Failed to read /table/H2I in %s.\n",name);
           return FAIL;
         }
         status = H5Dclose(dset_id);
         if (status == h5_error) {
-          fprintf(stderr,"Failed to close /data/H2I in %s.\n",name);
+          fprintf(stderr,"Failed to close /table/H2I in %s.\n",name);
           return FAIL;
         }
 
         EquilibriumTable.H2II = new double[EquilibriumTable.dim_size
                                           * EquilibriumTable.dim_size];
-        dset_id = H5Dopen(file_id, "/data/H2II");
+        dset_id = H5Dopen(file_id, "/table/H2II");
         if (dset_id == h5_error) {
-          fprintf(stderr,"Can't open /data/H2II in %s.\n", name);
+          fprintf(stderr,"Can't open /table/H2II in %s.\n", name);
           return FAIL;
         }
         status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                           H5S_ALL, H5P_DEFAULT, EquilibriumTable.H2II);
         if (status == h5_error) {
-          fprintf(stderr, "Failed to read /data/H2II in %s.\n",name);
+          fprintf(stderr, "Failed to read /table/H2II in %s.\n",name);
           return FAIL;
         }
         status = H5Dclose(dset_id);
         if (status == h5_error) {
-          fprintf(stderr,"Failed to close /data/H2II in %s.\n",name);
+          fprintf(stderr,"Failed to close /table/H2II in %s.\n",name);
           return FAIL;
         }
       }
       if (MultiSpecies > 2) {
         EquilibriumTable.DI = new double[EquilibriumTable.dim_size
                                           * EquilibriumTable.dim_size];
-        dset_id = H5Dopen(file_id, "/data/DI");
+        dset_id = H5Dopen(file_id, "/table/DI");
         if (dset_id == h5_error) {
-          fprintf(stderr,"Can't open /data/DI in %s.\n", name);
+          fprintf(stderr,"Can't open /table/DI in %s.\n", name);
           return FAIL;
         }
         status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                           H5S_ALL, H5P_DEFAULT, EquilibriumTable.DI);
         if (status == h5_error) {
-          fprintf(stderr, "Failed to read /data/DI in %s.\n",name);
+          fprintf(stderr, "Failed to read /table/DI in %s.\n",name);
           return FAIL;
         }
         status = H5Dclose(dset_id);
         if (status == h5_error) {
-          fprintf(stderr,"Failed to close /data/DI in %s.\n",name);
+          fprintf(stderr,"Failed to close /table/DI in %s.\n",name);
           return FAIL;
         }
 
         EquilibriumTable.DII = new double[EquilibriumTable.dim_size
                                           * EquilibriumTable.dim_size];
-        dset_id = H5Dopen(file_id, "/data/DII");
+        dset_id = H5Dopen(file_id, "/table/DII");
         if (dset_id == h5_error) {
-          fprintf(stderr,"Can't open /data/DII in %s.\n", name);
+          fprintf(stderr,"Can't open /table/DII in %s.\n", name);
           return FAIL;
         }
         status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                           H5S_ALL, H5P_DEFAULT, EquilibriumTable.DII);
         if (status == h5_error) {
-          fprintf(stderr, "Failed to read /data/DII in %s.\n",name);
+          fprintf(stderr, "Failed to read /table/DII in %s.\n",name);
           return FAIL;
         }
         status = H5Dclose(dset_id);
         if (status == h5_error) {
-          fprintf(stderr,"Failed to close /data/DII in %s.\n",name);
+          fprintf(stderr,"Failed to close /table/DII in %s.\n",name);
           return FAIL;
         }
 
         EquilibriumTable.HDI = new double[EquilibriumTable.dim_size
                                           * EquilibriumTable.dim_size];
-        dset_id = H5Dopen(file_id, "/data/HDI");
+        dset_id = H5Dopen(file_id, "/table/HDI");
         if (dset_id == h5_error) {
-          fprintf(stderr,"Can't open /data/HDI in %s.\n", name);
+          fprintf(stderr,"Can't open /table/HDI in %s.\n", name);
           return FAIL;
         }
         status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                           H5S_ALL, H5P_DEFAULT, EquilibriumTable.HDI);
         if (status == h5_error) {
-          fprintf(stderr, "Failed to read /data/HDI in %s.\n",name);
+          fprintf(stderr, "Failed to read /table/HDI in %s.\n",name);
           return FAIL;
         }
         status = H5Dclose(dset_id);
         if (status == h5_error) {
-          fprintf(stderr,"Failed to close /data/HDI in %s.\n",name);
+          fprintf(stderr,"Failed to close /table/HDI in %s.\n",name);
           return FAIL;
         }
       }
@@ -318,38 +318,38 @@ int ReadEquilibriumTable(char* name, FLOAT Time)
     /* Read in the density and temperature */
 
     EquilibriumTable.density = new double[EquilibriumTable.dim_size];
-    dset_id = H5Dopen(file_id, "/data/density");
+    dset_id = H5Dopen(file_id, "/indexer/density");
     if (dset_id == h5_error) {
-      fprintf(stderr,"Can't open /data/density in %s.\n", name);
+      fprintf(stderr,"Can't open /indexer/density in %s.\n", name);
       return FAIL;
     }
     status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                       H5S_ALL, H5P_DEFAULT, EquilibriumTable.density);
     if (status == h5_error) {
-      fprintf(stderr, "Failed to read /data/density in %s.\n",name);
+      fprintf(stderr, "Failed to read /indexer/density in %s.\n",name);
       return FAIL;
     }
     status = H5Dclose(dset_id);
     if (status == h5_error) {
-      fprintf(stderr,"Failed to close /data/density in %s.\n",name);
+      fprintf(stderr,"Failed to close /indexer/density in %s.\n",name);
       return FAIL;
     }
 
     EquilibriumTable.temperature = new double[EquilibriumTable.dim_size];
-    dset_id = H5Dopen(file_id, "/data/temperature");
+    dset_id = H5Dopen(file_id, "/indexer/temperature");
     if (dset_id == h5_error) {
-      fprintf(stderr,"Can't open /data/temperature in %s.\n", name);
+      fprintf(stderr,"Can't open /indexer/temperature in %s.\n", name);
       return FAIL;
     }
     status = H5Dread(dset_id, HDF5_R8, H5S_ALL, 
                       H5S_ALL, H5P_DEFAULT, EquilibriumTable.temperature);
     if (status == h5_error) {
-      fprintf(stderr, "Failed to read /data/temperature in %s.\n",name);
+      fprintf(stderr, "Failed to read /indexer/temperature in %s.\n",name);
       return FAIL;
     }
     status = H5Dclose(dset_id);
     if (status == h5_error) {
-      fprintf(stderr,"Failed to close /data/temperature in %s.\n",name);
+      fprintf(stderr,"Failed to close /indexer/temperature in %s.\n",name);
       return FAIL;
     }
 

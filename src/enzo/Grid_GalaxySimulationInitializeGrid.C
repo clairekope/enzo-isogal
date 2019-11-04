@@ -282,85 +282,7 @@ if (ComovingCoordinates) {
     ENZO_FAIL("Error in GetUnits.");
   } // end get units error if  
 } // end units if/else
-
-/*
-//TEST
- printf("Testing cooling rate\n");
- int s = 6;
-
- float *rate = new float[s];
- float *dens = new float[s];
- float *temp = new float[s];
- float *velx = new float[s];
- float *vely = new float[s];
- float *velz = new float[s];
- float *HIdens = new float[s];
- float *HIIdens = new float[s];
- float *HeIdens = new float[s];
- float *HeIIdens = new float[s];
- float *HeIIIdens = new float[s];
- float *H2Idens = new float[s];
- float *H2IIdens = new float[s];
- float *HMdens = new float[s];
- float *edens = new float[s];
- float *metal = new float[s];
-
- temp[0] = 1e4/TemperatureUnits/((Gamma-1.0)*mu);
- temp[1] = 5e4/TemperatureUnits/((Gamma-1.0)*mu);
- temp[2] = 1e5/TemperatureUnits/((Gamma-1.0)*mu);
- temp[3] = 5e5/TemperatureUnits/((Gamma-1.0)*mu);
- temp[4] = 1e6/TemperatureUnits/((Gamma-1.0)*mu);
- temp[5] = 5e6/TemperatureUnits/((Gamma-1.0)*mu);
-
- for (i=0; i<s; ++i) {
-   dens[i] = 1.007947 * 1.660538921e-24 / DensityUnits;
-   velx[i] = vely[i] = velz[i] = 0.0;
-   HIdens[i] = 1e-20 * dens[i];
-   HIIdens[i] = 0.76 * dens[i];
-   HeIdens[i] = (1.0 - 0.76) * dens[i];
-   HeIIdens[i] = 1e-20 * dens[i];
-   HeIIIdens[i] = 1e-20 * dens[i];
-   H2Idens[i] = 1e-20 * dens[i];
-   H2IIdens[i] = 1e-20 * dens[i];
-   HMdens[i] = 1e-20 * dens[i];
-   edens[i] = HIIdens[i] + HeIIdens[i]/4.0 + HeIIIdens[i]/2.0;
-   metal[i] = 0.02041 * dens[i]; //mass fraction
- }
-
- this->GrackleCustomCoolRate(1, &s, rate, dens, temp,
-			     velx, vely, velz, HIdens, HIIdens,
-			     HeIdens, HeIIdens, HeIIIdens, edens,
-			     HMdens, H2Idens, H2IIdens,
-			     NULL, NULL, NULL,
-			     metal);
-
- printf("Cooling Rates: (erg cm^3 s^-1)\n");
- for (i=0; i<s; ++i){
-   rate[i] *= POW(mh,2) * POW(LengthUnits,2) / ( POW(TimeUnits,3) * DensityUnits);
-   printf("%e ", rate[i]);
- }
- printf("\n");
  
- delete [] rate;
- delete [] dens;
- delete [] temp;
- delete [] velx;
- delete [] vely;
- delete [] velz;
- delete [] HIdens;
- delete [] HIIdens;
- delete [] HeIdens;
- delete [] HeIIdens;
- delete [] HeIIIdens;
- delete [] edens;
- delete [] HMdens;
- delete [] H2Idens;
- delete [] H2IIdens;
- delete [] metal;
-
- exit(0);
-// END TEST
-*/ 
 /* correct background density if it's not given in code units */
 if( UniformDensity < 1.0E-10 ){
   UniformDensity /= DensityUnits;
@@ -386,7 +308,7 @@ RotationScaleRadius /= LengthUnits;  // cm to code length
     for circumgalactic medium if needed (i.e., for CGM profiles that
     require integration to get quantities we care about. */
 halo_init(this);
- exit(0);
+
 /* compute size of fields */
 size = 1;
 for (dim = 0; dim < GridRank; dim++)
@@ -440,12 +362,14 @@ for (k = 0; k < GridDimension[2]; k++)
                  POW(fabs(z-DiskPosition[2]), 2) );
     r_sph = max(r_sph, 0.1*CellWidth[0][0]);
     
-    /*r_cyl = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
+    /*
+    r_cyl = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
                  POW(fabs(y-DiskPosition[1]), 2) );
-*/
+    */
+
     density = HaloGasDensity(r_sph)/DensityUnits;
     temperature = disk_temp = init_temp = HaloGasTemperature(r_sph);
-
+    
 
     FLOAT xpos, ypos, zpos, zheight, drad; 
     float CellMass;
@@ -549,7 +473,7 @@ for (k = 0; k < GridDimension[2]; k++)
           DiskVelocityMag = gasvel(drad, DiskDensity, ExpansionFactor,
                                   GalaxyMass, ScaleHeightR,
                                   ScaleHeightz, DMConcentration, Time);
-        else if( DiskGravity > 0 ){
+        else if( DiskGravity > 0 ){ // me
           CellMass = gauss_mass(drad*LengthUnits, zheight*LengthUnits,
                                 xpos*LengthUnits, ypos*LengthUnits,
                                 zpos*LengthUnits, inv, 
@@ -616,8 +540,8 @@ for (k = 0; k < GridDimension[2]; k++)
         if (disk_temp == init_temp)
           disk_temp = DiskTemperature; 
         temperature = disk_temp;
-        //if( temperature > 1.0e7 )
-        //  temperature = init_temp;
+        if( temperature > 1.0e7 )
+          temperature = init_temp;
         
         /* Here we're setting the disk to be X times more enriched -- DWS */
         if( UseMetallicityField )
@@ -1446,10 +1370,12 @@ void halo_init(grid* Grid){
     CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     CGM_data.rad[index] = this_radius;
 
+    /*
     printf("radius entropy pressure density temperature\n");
     printf("%e %e %e %e %e\n",
 	   this_radius/CM_PER_KPC, this_ent*KEV_PER_ERG, this_press, CGM_data.n_rad[index], CGM_data.T_rad[index]);
-
+    */
+    
     // integrate inward from Rvir    
     while(this_radius > 0.0){
       
@@ -1471,10 +1397,10 @@ void halo_init(grid* Grid){
 	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
 	CGM_data.rad[index] = this_radius;
       }
-      
+      /*
       printf("%e %e %e %e %e\n",
 	   this_radius/CM_PER_KPC, this_ent*KEV_PER_ERG, this_press, CGM_data.n_rad[index], CGM_data.T_rad[index]);
-      
+      */
     }
   }
 
