@@ -1266,7 +1266,7 @@ void halo_init(grid* Grid){
   
   Rvir = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
 
-  CGM_data.R_outer = Rvir;  // integrate out to the virial radius of halo
+  CGM_data.R_outer = 3.0*Rvir;  // integrate out to the virial radius of halo
 
   CGM_data.dr = CGM_data.R_outer / double(CGM_data.nbins);  // stepsize for RK4 integration and radial bins
   
@@ -1365,17 +1365,11 @@ void halo_init(grid* Grid){
 		     Gamma/(Gamma-1.));
 
     // set the bin that we start at (otherwise it doesn't get set!)
-    index = int(this_radius/(-1.0*dr)+1.0e-3);
+    index = int(this_radius/(-1.0*dr)+1.0e-3); printf("%d\n", index);
     CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma); // n_e ~ n_i
     CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     CGM_data.rad[index] = this_radius;
 
-    /*
-    printf("radius entropy pressure density temperature\n");
-    printf("%e %e %e %e %e\n",
-	   this_radius/CM_PER_KPC, this_ent*KEV_PER_ERG, this_press, CGM_data.n_rad[index], CGM_data.T_rad[index]);
-    */
-    
     // integrate inward from Rvir    
     while(this_radius > 0.0){
       
@@ -1397,10 +1391,42 @@ void halo_init(grid* Grid){
 	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
 	CGM_data.rad[index] = this_radius;
       }
-      /*
-      printf("%e %e %e %e %e\n",
-	   this_radius/CM_PER_KPC, this_ent*KEV_PER_ERG, this_press, CGM_data.n_rad[index], CGM_data.T_rad[index]);
-      */
+    }
+    
+    // Reset to boundary state
+    dr = CGM_data.dr;
+    this_radius = Rvir;
+    this_ent = halo_S_of_r(this_radius, Grid); // in erg*cm^2
+
+    rmax = 2.163*Rvir/GalaxySimulationGasHaloDMConcentration;
+    vcirc2_max = GravConst * halo_mod_galmass_at_r(rmax)/rmax;
+    this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
+		     Gamma/(Gamma-1.));
+
+    
+    // Integrate outwards to R_outer
+    while(this_radius < CGM_data.R_outer){
+
+      // calculate RK4 coefficients.
+      k1 = halo_dP_dr(this_radius,          this_press,             Grid);
+      k2 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k1, Grid);
+      k3 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k2, Grid);
+      k4 = halo_dP_dr(this_radius + dr,     this_press + dr*k3,     Grid);
+      
+      // update radius, pressure, entropy
+      this_radius += dr;  // new radius
+      this_press += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4); // P @ new radius
+      this_ent = halo_S_of_r(this_radius, Grid); // entropy @ new radius
+
+      // store density and temperature in the struct
+      index = int(this_radius/dr+1.0e-3);
+      if (index < 8192) {
+	CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
+	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
+	CGM_data.rad[index] = this_radius;
+      } else {
+	break; // Will not get R_outer into the array
+      }
     }
   }
 
