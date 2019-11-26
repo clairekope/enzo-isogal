@@ -355,7 +355,7 @@ int ReadEquilibriumTable(char* name, FLOAT Time)
 
     status = H5Fclose (file_id);
 
-  }/* else { // not root processor
+  } else { // not root processor
     if (MultiSpecies) {
       EquilibriumTable.HI = new double[EquilibriumTable.dim_size
                                         * EquilibriumTable.dim_size];
@@ -416,7 +416,6 @@ int ReadEquilibriumTable(char* name, FLOAT Time)
   MPI_Bcast(EquilibriumTable.density, EquilibriumTable.dim_size, MPI_DOUBLE, ROOT_PROCESSOR, MPI_COMM_WORLD);
   MPI_Bcast(EquilibriumTable.temperature, EquilibriumTable.dim_size, MPI_DOUBLE, ROOT_PROCESSOR, MPI_COMM_WORLD);
 #endif
-  */
   
   /* convert from cgs to code units */
   for (int i=0; i<EquilibriumTable.dim_size; ++i){
