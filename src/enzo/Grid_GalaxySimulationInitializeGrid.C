@@ -654,6 +654,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   if (equilibrate) {
     /*  What temperature and density bins does the cell fall between? 
      *  'density' is in code units; 'temperature' is K
+     *  Table arrays contain fractions.
      *  densities are returned in code units
      */
         
@@ -693,7 +694,7 @@ void setup_chem(float density, float temperature, int equilibrate,
       interpolate = false;
 
     if (interpolate) {
-      HIdest = bilinear_interp(density, temperature, 
+      HIdest = density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -703,7 +704,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.HI[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.HI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-      HIIdest =  bilinear_interp(density, temperature, 
+      HIIdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -713,7 +714,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.HII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.HII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-      HeIdest =  bilinear_interp(density, temperature, 
+      HeIdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -723,7 +724,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.HeI[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.HeI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-      HeIIdest =  bilinear_interp(density, temperature, 
+      HeIIdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -733,7 +734,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.HeII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.HeII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-      HeIIIdest =  bilinear_interp(density, temperature, 
+      HeIIIdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -743,7 +744,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.HeIII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.HeIII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
       
-      DEdest =  bilinear_interp(density, temperature, 
+      DEdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -754,7 +755,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.de[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
       if (MultiSpecies > 1) {
-	HMdest =  bilinear_interp(density, temperature, 
+	HMdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -764,7 +765,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.HM[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.HM[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-	H2Idest =  bilinear_interp(density, temperature,
+	H2Idest =  density*bilinear_interp(density, temperature,
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -774,7 +775,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.H2I[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.H2I[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-	H2IIdest =  bilinear_interp(density, temperature,
+	H2IIdest =  density*bilinear_interp(density, temperature,
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -785,7 +786,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.H2II[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
       }
       if (MultiSpecies > 2) {
-	DIdest =  bilinear_interp(density, temperature, 
+	DIdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -795,7 +796,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.DI[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.DI[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-	DIIdest =  bilinear_interp(density, temperature, 
+	DIIdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
@@ -805,7 +806,7 @@ void setup_chem(float density, float temperature, int equilibrate,
   EquilibriumTable.DII[EquilibriumTable.dim_size * temp_indx + dens_indx+1],
   EquilibriumTable.DII[EquilibriumTable.dim_size * (temp_indx+1) + dens_indx+1]);
 
-	HDIdest =  bilinear_interp(density, temperature, 
+	HDIdest =  density*bilinear_interp(density, temperature, 
   EquilibriumTable.density[dens_indx],
   EquilibriumTable.density[dens_indx+1],
   EquilibriumTable.temperature[temp_indx],
