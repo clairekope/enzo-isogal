@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "preincludes.h" 
 #include "EnzoTiming.h"
 #include "ErrorExceptions.h"
 #include "macros_and_parameters.h"
@@ -1512,7 +1513,11 @@ double halo_S_of_r(double r, grid* Grid){
     // setup_chem has densities in code, temperature in K
     setup_chem(dens, Tgrav, EquilibrateChem, de, hi, hii, hei, heii, heiii, hm, h2i, h2ii, di, dii, hdi);
     metal = GalaxySimulationGasHaloMetallicity * CoolData.SolarMetalFractionByMass * dens;
-    
+
+    // temporarily disable UV background; makes S(r) trend downward at large r instead of upward
+    // because of low Tgrav
+    int saved_UVB = grackle_data->UVbackground;
+    grackle_data->UVbackground = 0;
     Grid->GrackleCustomCoolRate(1, &dim, &Lambda,
 				&dens, &Tgrav_therm,
 				&vx, &vy, &vz,
@@ -1522,7 +1527,8 @@ double halo_S_of_r(double r, grid* Grid){
 				&hm, &h2i, &h2ii,
 				&di, &dii, &hdi,
 				&metal);
-    
+    grackle_data->UVbackground = saved_UVB;
+
     // to cgs
     Lambda = fabs(Lambda) * POW(mh,2) * POW(LengthUnits,2) / ( POW(TimeUnits,3) * DensityUnits);
 
