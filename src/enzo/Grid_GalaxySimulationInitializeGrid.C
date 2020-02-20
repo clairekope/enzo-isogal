@@ -372,7 +372,7 @@ for (k = 0; k < GridDimension[2]; k++)
     temperature = disk_temp = init_temp = HaloGasTemperature(r_sph);
     
 
-    FLOAT xpos, ypos, zpos, zheight, drad; 
+    FLOAT xpos, ypos, zpos, zheight, drad, theta; 
     float CellMass;
     FLOAT rp_hat[3];
     FLOAT yhat[3];
@@ -411,11 +411,15 @@ for (k = 0; k < GridDimension[2]; k++)
       rp_hat[1] = rp_hat[1]/drad;
       rp_hat[2] = rp_hat[2]/drad;
       
+      /* polar angle as measured from the angular momentum vector*/
+      theta = acos(zheight/drad);
+
       /* If requested, calculate velocity for CGM halo.
        * Will be replaced wtih disk velocity later if appropriate */
       if (UseHaloRotation){
           halo_vmag = RotationScaleVelocity 
-                      * POW(r_sph/RotationScaleRadius, 
+                      * sin(theta)*sin(theta)
+                      * POW(drad/RotationScaleRadius, 
                             RotationPowerLawIndex);
 
         /* Cylindrical velocity */
