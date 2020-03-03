@@ -387,6 +387,7 @@ for (k = 0; k < GridDimension[2]; k++)
       xpos = x-DiskPosition[0]-(dim == 1 ? 0.5*CellWidth[0][0] : 0.0);
       ypos = y-DiskPosition[1]-(dim == 2 ? 0.5*CellWidth[1][0] : 0.0);
       zpos = z-DiskPosition[2]-(dim == 3 ? 0.5*CellWidth[2][0] : 0.0);
+      rdisk = sqrt(xpos*xpos + ypos*ypos + zpos*zpos);
 
       /* Compute z and r_perp (AngularMomentum is angular momentum 
          and must have unit length). */    
@@ -412,16 +413,16 @@ for (k = 0; k < GridDimension[2]; k++)
       rp_hat[2] = rp_hat[2]/drad;
       
       /* polar angle as measured from the angular momentum vector*/
-      theta = acos(zheight/drad);
+      theta = acos(zheight/rdisk);
 
       /* If requested, calculate velocity for CGM halo.
        * Will be replaced wtih disk velocity later if appropriate */
       if (UseHaloRotation){
           halo_vmag = RotationScaleVelocity 
                       * sin(theta)*sin(theta)
-                      * POW(drad/RotationScaleRadius, 
+                      * POW(rdisk/RotationScaleRadius, 
                             RotationPowerLawIndex);
-
+	  
         /* Cylindrical velocity */
         Velocity[0] = halo_vmag * (AngularMomentum[1]*rp_hat[2] -
                                    AngularMomentum[2]*rp_hat[1]);
@@ -989,42 +990,42 @@ float gasvel(FLOAT radius, float DiskDensity, FLOAT ExpansionFactor, float Galax
 float gauss_mass(FLOAT r, FLOAT z, FLOAT xpos, FLOAT ypos, FLOAT zpos, FLOAT inv [3][3], float DiskDensity, FLOAT ScaleHeightR, FLOAT ScaleHeightz, FLOAT cellwidth)
 {
   
-  FLOAT EvaluationPoints [5] = {-0.90617985,-0.53846931,0.0,0.53846931,0.90617985};
-  FLOAT Weights [5] = {0.23692689,0.47862867,0.56888889,0.47862867,0.23692689};
-  FLOAT xResult [5];
-  FLOAT yResult [5];
-  float Mass = 0;
-  FLOAT xrot,yrot,zrot;
-  int i,j,k;
-  FLOAT rrot;
-  
-  for (i=0;i<5;i++) {
+    FLOAT EvaluationPoints [5] = {-0.90617985,-0.53846931,0.0,0.53846931,0.90617985};
+    FLOAT Weights [5] = {0.23692689,0.47862867,0.56888889,0.47862867,0.23692689};
+    FLOAT xResult [5];
+    FLOAT yResult [5];
+    float Mass = 0;
+    FLOAT xrot,yrot,zrot;
+    int i,j,k;
+    FLOAT rrot;
 
-      xResult[i] = 0.0;
-      for (j=0;j<5;j++) {
+    for (i=0;i<5;i++) {
 
-    yResult[j] = 0.0;
-    for (k=0;k<5;k++) {
+        xResult[i] = 0.0;
+        for (j=0;j<5;j++) {
+        
+            yResult[j] = 0.0;
+            for (k=0;k<5;k++) {
 
-        rot_to_disk(xpos+EvaluationPoints[i]*cellwidth/2.0,ypos+EvaluationPoints[j]*cellwidth/2.0,zpos+EvaluationPoints[k]*cellwidth/2.0,xrot,yrot,zrot,inv);
-        rrot = sqrt(POW(xrot,2)+POW(yrot,2));
+                rot_to_disk(xpos+EvaluationPoints[i]*cellwidth/2.0,ypos+EvaluationPoints[j]*cellwidth/2.0,zpos+EvaluationPoints[k]*cellwidth/2.0,xrot,yrot,zrot,inv);
+                rrot = sqrt(POW(xrot,2)+POW(yrot,2));
 
-        if( PointSourceGravity > 0 )
-    yResult[j] += cellwidth/2.0*Weights[k]*PEXP(-rrot/ScaleHeightR)/POW(cosh(zrot/(2.0*ScaleHeightz)),2);
-        else if( DiskGravity > 0 ){
-    if( rrot/Mpc < SmoothRadius )
-      yResult[j] += cellwidth/2.0*Weights[k]/cosh(rrot/ScaleHeightR)/cosh(fabs(zrot)/ScaleHeightz);
-    else if( rrot/Mpc < TruncRadius )
-      yResult[j] += cellwidth/2.0*Weights[k]/cosh(rrot/ScaleHeightR)/cosh(fabs(zrot)/ScaleHeightz)*0.5*(1.0+cos(pi*(rrot-SmoothRadius*Mpc)/(SmoothLength*Mpc)));
-        } // end disk gravity if
+                if( PointSourceGravity > 0 )
+                    yResult[j] += cellwidth/2.0*Weights[k]*PEXP(-rrot/ScaleHeightR)/POW(cosh(zrot/(2.0*ScaleHeightz)),2);
+                else if( DiskGravity > 0 ){
+                    if( rrot/Mpc < SmoothRadius )
+                        yResult[j] += cellwidth/2.0*Weights[k]/cosh(rrot/ScaleHeightR)/cosh(fabs(zrot)/ScaleHeightz);
+                    else if( rrot/Mpc < TruncRadius )
+                        yResult[j] += cellwidth/2.0*Weights[k]/cosh(rrot/ScaleHeightR)/cosh(fabs(zrot)/ScaleHeightz)*0.5*(1.0+cos(pi*(rrot-SmoothRadius*Mpc)/(SmoothLength*Mpc)));
+                } // end disk gravity if
 
-    }
-    xResult[i] += cellwidth/2.0*Weights[j]*yResult[j];
-      }
-      Mass += cellwidth/2.0*Weights[i]*xResult[i];
-  }  
-  Mass *= DiskDensity;
-  return Mass;
+            }
+            xResult[i] += cellwidth/2.0*Weights[j]*yResult[j];
+        }
+        Mass += cellwidth/2.0*Weights[i]*xResult[i];
+    }  
+    Mass *= DiskDensity;
+    return Mass;
 }
 
 //Finds coordinates in rotated coordinate system
@@ -1761,7 +1762,7 @@ float DiskPotentialCircularVelocity(FLOAT cellwidth, FLOAT z, FLOAT density,
   if (fabs(drcyl*LengthUnits/Mpc) <= SmoothRadius) {
 
     zicm  = findZicm(drcyl)*LengthUnits;
-    zicm2 = findZicm(r2/LengthUnits)*LengthUnits;
+    zicm2 = findZicm(r2/LengthUnits)*LengthUnits; // r2 = drcyl + delta
 
     if( fabs(z) < fabs(zicm) ){
 
