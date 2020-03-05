@@ -70,17 +70,17 @@ double bilinear_interp(double x, double y,
                        double f_x1y1, double f_x1y2, 
                        double f_x2y1, double f_x2y2);
 
+
+float NFWDarkMatterMassEnclosed(FLOAT R);
+
 /* Internal Routines for CGM setup */
 float HaloGasDensity(FLOAT R);
 float HaloGasTemperature(FLOAT R);
-float NFWDarkMatterMassEnclosed(FLOAT R);
 
 /* Internal Routines for DiskGravity Setup */
-float DiskGravityCircularVelocity(FLOAT cellwidth,
-                                    FLOAT z,FLOAT density,
-                                    FLOAT &temperature);
-float DiskGravityStellarPotential();
-float DiskGravityBulgePotential();
+double DiskGravityCircularVelocity(double rsph, double rcyl, double z);
+double DiskGravityStellarAccel(double rcyl, double z);
+double DiskGravityBulgeAccel(double rsph);
 
 static float DensityUnits, LengthUnits, TemperatureUnits = 1,
              TimeUnits, VelocityUnits, MassUnits;
@@ -369,7 +369,7 @@ for (k = 0; k < GridDimension[2]; k++)
     temperature = disk_temp = init_temp = HaloGasTemperature(r_sph);
     
 
-    FLOAT xpos, ypos, zpos, rdisk, zheight, drcyl, theta; 
+    FLOAT xpos, ypos, zpos, rsph, zheight, rcyl, theta; 
     float CellMass;
     FLOAT rp_hat[3];
     FLOAT yhat[3];
@@ -384,7 +384,6 @@ for (k = 0; k < GridDimension[2]; k++)
       xpos = x-DiskPosition[0]-(dim == 1 ? 0.5*CellWidth[0][0] : 0.0);
       ypos = y-DiskPosition[1]-(dim == 2 ? 0.5*CellWidth[1][0] : 0.0);
       zpos = z-DiskPosition[2]-(dim == 3 ? 0.5*CellWidth[2][0] : 0.0);
-      rdisk = sqrt(xpos*xpos + ypos*ypos + zpos*zpos);
 
       /* Compute z and r_perp (AngularMomentum is angular momentum 
          and must have unit length). */    
@@ -400,23 +399,24 @@ for (k = 0; k < GridDimension[2]; k++)
       rp_hat[0] = xpos - zheight*AngularMomentum[0];
       rp_hat[1] = ypos - zheight*AngularMomentum[1];
       rp_hat[2] = zpos - zheight*AngularMomentum[2];
-      drcyl = sqrt(rp_hat[0]*rp_hat[0] + rp_hat[1]*rp_hat[1] + rp_hat[2]*rp_hat[2]);
+      rcyl = sqrt(rp_hat[0]*rp_hat[0] + rp_hat[1]*rp_hat[1] + rp_hat[2]*rp_hat[2]);
 
       /* Normalize the vector r_perp = unit vector pointing along plane of disk */
 
-      rp_hat[0] = rp_hat[0]/drcyl;
-      rp_hat[1] = rp_hat[1]/drcyl;
-      rp_hat[2] = rp_hat[2]/drcyl;
+      rp_hat[0] = rp_hat[0]/rcyl;
+      rp_hat[1] = rp_hat[1]/rcyl;
+      rp_hat[2] = rp_hat[2]/rcyl;
       
-      /* polar angle as measured from the angular momentum vector*/
-      theta = acos(zheight/rdisk);
 
       /* If requested, calculate velocity for CGM halo.
        * Will be replaced wtih disk velocity later if appropriate */
       if (UseHaloRotation){
+          /* polar angle as measured from the angular momentum vector*/
+          theta = acos(zheight/r_sph);
+
           halo_vmag = RotationScaleVelocity 
                       * sin(theta)*sin(theta)
-                      * POW(rdisk/RotationScaleRadius, 
+                      * POW(r_sph/RotationScaleRadius, 
                             RotationPowerLawIndex);
 	  
         /* Cylindrical velocity */
@@ -429,6 +429,12 @@ for (k = 0; k < GridDimension[2]; k++)
       }
       
       if (r_sph < DiskRadius) {
+
+        /* Beyond truncation radius */
+        if( fabs(rcyl*LengthUnits/Mpc) > TruncRadius ){
+          disk_dens = 0.0;
+          break;
+        }
 
         /* Find another vector perpendicular to r_perp and AngularMomentum */
 
@@ -454,7 +460,6 @@ for (k = 0; k < GridDimension[2]; k++)
         inv[2][2] = AngularMomentum[2];
 
         // Matrix is orthogonal by construction so inverse = transpose
-
         for (i=0;i<3;i++)
           for (j=i+1;j<3;j++){
             temp = inv[i][j];
@@ -462,16 +467,11 @@ for (k = 0; k < GridDimension[2]; k++)
             inv[j][i] = temp;
           }
 
-        if( fabs(drcyl*LengthUnits/Mpc) > TruncRadius ){
-          disk_dens = 0.0;
-          break;
-        }
-
         DiskDensity = (GasMass * SolarMass
                   / (8.0*pi*ScaleHeightz*Mpc*POW(ScaleHeightR*Mpc,2.0)))
                   / DensityUnits;   //Code units (rho_0) 
 
-        CellMass = gauss_mass(drcyl*LengthUnits, zheight*LengthUnits,
+        CellMass = gauss_mass(rcyl*LengthUnits, zheight*LengthUnits,
                             xpos*LengthUnits, ypos*LengthUnits,
                             zpos*LengthUnits, inv, 
                             DiskDensity*DensityUnits,
@@ -480,37 +480,24 @@ for (k = 0; k < GridDimension[2]; k++)
 
         disk_dens = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
 
-        if (PointSourceGravity > 0 )
-          DiskVelocityMag = gasvel(drcyl, DiskDensity, ExpansionFactor,
-                                  GalaxyMass, ScaleHeightR,
-                                  ScaleHeightz, DMConcentration, Time);
-
-        else if( DiskGravity > 0 ){ // me
-
-          // CALCULATE DiskVelocityMag
-          DiskVelocityMag = 0.0; // temp
-        }
-        if (PointSourceGravity*DiskGravity != FALSE ) 
-          ENZO_FAIL("Cannot activate both PointSource and Disk gravity options for Isolated Galaxy");
-
-        if (dim == 0) {
-          CellMass = gauss_mass(drcyl*LengthUnits, zheight*LengthUnits,
-                                xpos*LengthUnits, ypos*LengthUnits,
-                                zpos*LengthUnits, inv, 
-                                DiskDensity*DensityUnits,
-                                ScaleHeightR*Mpc, ScaleHeightz*Mpc,
-                                CellWidth[0][0]*LengthUnits);
-          disk_dens = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
-        }
-
-        /* If we're above the disk, then exit. */
-
+        /* Inside CGM */
         if (disk_dens < density)
           break;
 
-        /* Compute velocity magnitude (divided by drcyl). 
-           This assumes PointSourceGravityPosition and Disk center 
-           are the same. */
+        //
+        // calculate velocity
+        //
+
+        if (PointSourceGravity > 0 )
+          DiskVelocityMag = gasvel(rcyl, DiskDensity, ExpansionFactor,
+                                  GalaxyMass, ScaleHeightR,
+                                  ScaleHeightz, DMConcentration, Time);
+
+        else if( DiskGravity > 0 ) // me
+          DiskVelocityMag = DiskGravityCircularVelocity(r_sph, rcyl, zheight);
+        
+        if (PointSourceGravity*DiskGravity != FALSE ) 
+          ENZO_FAIL("Cannot activate both PointSource and Disk gravity options for Isolated Galaxy");
 
         /* Compute velocty: L x r_perp. */
         if (dim == 0 || dim == 1)
@@ -530,20 +517,10 @@ for (k = 0; k < GridDimension[2]; k++)
        * 'Velocity' (which are currently set to CGM values) with their
        * appropriate disk values */
        
-      if (disk_dens > density && fabs(drcyl*LengthUnits/Mpc) <= TruncRadius){
-        density = disk_dens;
+      if (disk_dens > density && fabs(rcyl*LengthUnits/Mpc) <= TruncRadius){
         
-        /* temperature, disk_temp & init_temp start at the temp returned
-         * by HaloGasTemperature(r_sph). If (r_sph < DiskRadius),
-         * disk_temp may be modified by DiskPotentialCircularVelocity.
-         * If it *hasn't* been modified, set it to DiskTemperature.
-         * Then, replace 'temperature' with 'disk_temp' and impose
-         * a ceiling */
-        if (disk_temp == init_temp)
-          disk_temp = DiskTemperature; 
-        temperature = disk_temp;
-        if( temperature > 1.0e7 )
-          temperature = init_temp;
+        density = disk_dens;
+        temperature = DiskTemperature;
         
         /* Here we're setting the disk to be X times more enriched -- DWS */
         if( UseMetallicityField )
@@ -650,11 +627,43 @@ for (k = 0; k < GridDimension[2]; k++)
 /*
 * Initialization routines
 * Order:
+*   NFW mass (NFWDarkMatterMassEnclosed)
 *   cell mass (gauss_mass, rot_to_disk)
 *   disk velocity (gas_vel OR ???)
 *   chemistry (setup_chem, bilinear_interp)
 *   CGM profile
 */
+
+
+/* halo galaxy mass at a given radius, using user-defined global parameters for galaxy
+   quantities and assuming that all halo mass is in an NFW halo.  This is not totally
+   correct near the center of the halo, but since we're using it for the CGM initialization 
+   and are dealing with radii that aren't particularly near the center of the halo, this 
+   approximation is probably fine. 
+
+   Input is the radius in CGS units; output is the enclosed mass at that radius in CGS units.
+*/
+double NFWDarkMatterMassEnclosed(double r){
+
+  double M, C, Rvir, rho_0, Rs, M_within_r;
+  double rho_crit = 1.8788e-29*0.49;
+  
+  // GSDarkMatterConcentration is the same as DiskGravityDarkMatterConcentration
+  // if the latter is in use, same with GSGalaxyMass & DGDarkMatterMass
+
+  M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
+  C = GalaxySimulationDMConcentration;  // concentration parameter for NFW halo
+  
+  Rvir = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+  Rs = Rvir/C;  // scale radius of NFW halo in CGS
+  rho_0 = 200.0*POW(C,3)/3.0/(log(1.0+C) - C/(1.0+C))*rho_crit;  // rho_0 for NFW halo in CGS
+
+  // mass w/in radius R
+  M_within_r = 4.0*3.14159*rho_0*POW(Rs,3.0)*(log((Rs+r)/Rs) - r/(Rs+r));
+
+  return M_within_r;
+  
+}
 
 // Computes the total mass in a given cell by integrating the density profile using 5-point Gaussian quadrature
 float gauss_mass(FLOAT r, FLOAT z, FLOAT xpos, FLOAT ypos, FLOAT zpos, FLOAT inv [3][3], float DiskDensity, FLOAT ScaleHeightR, FLOAT ScaleHeightz, FLOAT cellwidth)
@@ -797,7 +806,41 @@ float gasvel(FLOAT radius, float DiskDensity, FLOAT ExpansionFactor, float Galax
 //
 // Disk velocity with DiskGravity
 //
-// TODO
+double DiskGravityStellarAccel(double rcyl, double z){
+    // return (cylindrical) radial component of acceleration ...? in cgs
+    // Potential from  Miyamoto & Nagai 75
+
+    double accelcylR;
+
+    accelcylR = GravConst * DiskGravityStellarDiskMass*SolarMass * rcyl
+              / sqrt(POW(
+                    POW(rcyl,2)
+                  + POW(DiskGravityStellarDiskScaleHeightR*Mpc
+                        + sqrt(POW(z*LengthUnits,2)
+                             + POW(DiskGravityStellarDiskScaleHeightz*Mpc,2)),
+                        2),
+                     3));
+
+    return accelcylR;
+}
+
+double DiskGravityBulgeAccel(double rsph) {
+    double accelsph;
+
+    accelsph = GravConst * DiskGravityStellarBulgeMass*SolarMass
+             / POW(rsph + DiskGravityStellarBulgeR*Mpc,2);
+
+    return accelsph;
+}
+
+double DiskGravityCircularVelocity(double rsph, double rcyl, double z) {
+    double acc, velmag;
+    acc = GravConst * NFWDarkMatterMassEnclosed(rsph)
+        + DiskGravityStellarAccel(rcyl, z)
+        + DiskGravityBulgeAccel(rsph);
+
+    velmag = sqrt(acc/rcyl); // or rsph rcyl???
+}
 
 /* Function for initializing chemistry */
 void setup_chem(float density, float temperature, int equilibrate,
@@ -1615,36 +1658,6 @@ double halo_g_of_r(double r){
 
 double halo_mod_g_of_r(double r){
   return GravConst*halo_mod_DMmass_at_r(r)/(r*r);
-}
-
-/* halo galaxy mass at a given radius, using user-defined global parameters for galaxy
-   quantities and assuming that all halo mass is in an NFW halo.  This is not totally
-   correct near the center of the halo, but since we're using it for the CGM initialization 
-   and are dealing with radii that aren't particularly near the center of the halo, this 
-   approximation is probably fine. 
-
-   Input is the radius in CGS units; output is the enclosed mass at that radius in CGS units.
-*/
-double NFWDarkMatterMassEnclosed(double r){
-
-  double M, C, Rvir, rho_0, Rs, M_within_r;
-  double rho_crit = 1.8788e-29*0.49;
-  
-  // GSDarkMatterConcentration is the same as DiskGravityDarkMatterConcentration
-  // if the latter is in use, same with GSGalaxyMass & DGDarkMatterMass
-
-  M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
-  C = GalaxySimulationDMConcentration;  // concentration parameter for NFW halo
-  
-  Rvir = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
-  Rs = Rvir/C;  // scale radius of NFW halo in CGS
-  rho_0 = 200.0*POW(C,3)/3.0/(log(1.0+C) - C/(1.0+C))*rho_crit;  // rho_0 for NFW halo in CGS
-
-  // mass w/in radius R
-  M_within_r = 4.0*3.14159*rho_0*POW(Rs,3.0)*(log((Rs+r)/Rs) - r/(Rs+r));
-
-  return M_within_r;
-  
 }
 
 /* A modified NFW halo, where small radii (r <= 2.163*Rs) have enclosed mass
