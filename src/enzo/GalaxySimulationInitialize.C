@@ -291,6 +291,12 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 
   } // end input from parameter file
 
+  // If using DiskGravity, make two GalaxySimulation parameters consistent
+  if (DiskGravity > 0) {
+    GalaxySimulationGalaxyMass = DiskGravityDarkMatterMass;
+    GalaxySimulationDarkMatterConcentrationParameter = DiskGravityDarkMatterConcentration;
+  }
+
   if (GalaxySimulationEquilibrateChem)
     ReadEquilibriumTable(GalaxySimulationEquilibriumFile, MetaData.Time);
 

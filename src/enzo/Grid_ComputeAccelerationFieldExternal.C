@@ -355,7 +355,7 @@ int grid::ComputeAccelerationFieldExternal()
     FLOAT dadt, a = 1;
     float AngularMomentumx, AngularMomentumy, AngularMomentumz;
     float MSDisk, SDiskScaleHeightR, SDiskScaleHeightz, MBulge, rBulge,
-      rDMConst, densDMConst;
+      DMMass, DMCon;
 
     AngularMomentumx = DiskGravityAngularMomentum[0];
     AngularMomentumy = DiskGravityAngularMomentum[1];
@@ -365,8 +365,8 @@ int grid::ComputeAccelerationFieldExternal()
     SDiskScaleHeightz = DiskGravityStellarDiskScaleHeightz * Mpc;
     MBulge = DiskGravityStellarBulgeMass * SolarMass;
     rBulge = DiskGravityStellarBulgeR * Mpc;
-    rDMConst = DiskGravityDarkMatterR * Mpc;
-    densDMConst = DiskGravityDarkMatterDensity;
+    DMMass = DiskGravityDarkMatterMass * SolarMass;
+    DMCon = DiskGravityDarkMatterConcentration;
 
     /* Compute adot/a at time = t+1/2dt (time-centered). */
     float DensityUnits=1, LengthUnits=1, TemperatureUnits=1, TimeUnits=1,
@@ -382,6 +382,12 @@ int grid::ComputeAccelerationFieldExternal()
 
     GetUnits(&DensityUnits,&LengthUnits,&TemperatureUnits,&TimeUnits, &VelocityUnits,&MassUnits,Time);
     AccelUnits = LengthUnits/TimeUnits/TimeUnits;
+
+    double Rvir, rho_0, Rs;
+    double rho_crit = 1.8788e-29*0.49;
+    Rvir = POW(3.0/(4.0*pi)*200/(DMMass*rho_crit),1./3.);  // virial radius in CGS
+    Rs = Rvir/DMCon;  // scale radius of NFW halo in CGS
+    rho_0 = 200.0*POW(DMCon,3)/3.0/(log(1.0+DMCon) - DMCon/(1.0+DMCon))*rho_crit;  // rho_0 for NFW halo in CGS
 
     /* Loop over grid, adding acceleration to field. */
     for (dim = 0; dim < GridRank; dim++) {
@@ -426,12 +432,9 @@ int grid::ComputeAccelerationFieldExternal()
             radius = sqrt(rsquared) * LengthUnits;
             rcyl = sqrt(xdisk*xdisk + ydisk*ydisk + zdisk*zdisk) * LengthUnits;
             
-            accelsph = GravConst/POW(radius,2)
-                       * 4*pi*densDMConst*POW(rDMConst,3)
-                       *(
-                        log( (rDMConst+r)/rDMConst ) - r/(rDMConst+r)
-                        );
-            //accelsph += (GravConst)*MBulge/POW(radius+rBulge,2);
+            accelsph = GravConst * 4.0*pi*rho_0*POW(Rs,3.0)
+                        *(log((Rs+radius)/Rs) - radius/(Rs+radius));
+            accelsph += (GravConst)*MBulge/POW(radius+rBulge,2);
 
             accelcylR = GravConst*MSDisk*rcyl/sqrt(POW(POW(rcyl,2)
                       + POW(SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
@@ -499,12 +502,9 @@ int grid::ComputeAccelerationFieldExternal()
         radius = sqrt(rsquared) * LengthUnits;
         rcyl = sqrt(xdisk*xdisk + ydisk*ydisk + zdisk*zdisk) * LengthUnits;
         
-        accelsph = GravConst/POW(radius,2)
-                   * 4*pi*densDMConst*POW(rDMConst,3)
-                   *(
-                    log( (rDMConst+r)/rDMConst ) - r/(rDMConst+r)
-                    );
-        //accelsph += (GravConst)*MBulge/POW(radius+rBulge,2);
+        accelsph = GravConst * 4.0*pi*rho_0*POW(Rs,3.0)
+                        *(log((Rs+radius)/Rs) - radius/(Rs+radius));
+        accelsph += (GravConst)*MBulge/POW(radius+rBulge,2);
 
         accelcylR = GravConst*MSDisk*rcyl/sqrt(POW(POW(rcyl,2)
                   + POW(SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
