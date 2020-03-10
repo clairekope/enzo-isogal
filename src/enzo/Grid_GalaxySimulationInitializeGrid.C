@@ -414,7 +414,7 @@ for (k = 0; k < GridDimension[2]; k++)
           /* polar angle as measured from the angular momentum vector*/
           theta = acos(zheight/r_sph);
 
-          halo_vmag = RotationScaleVelocity 
+          halo_vmag = RotationScaleVelocity // code units
                       * sin(theta)*sin(theta)
                       * POW(r_sph/RotationScaleRadius, 
                             RotationPowerLawIndex);
@@ -494,7 +494,10 @@ for (k = 0; k < GridDimension[2]; k++)
                                   ScaleHeightz, DMConcentration, Time);
 
         else if( DiskGravity > 0 ) // me
-          DiskVelocityMag = DiskGravityCircularVelocity(r_sph, rcyl, zheight);
+          DiskVelocityMag = DiskGravityCircularVelocity(r_sph*LengthUnits,
+                                                        rcyl*LengthUnits,
+                                                        zheight*LengthUnits)
+                            /VelocityUnits;
         
         if (PointSourceGravity*DiskGravity != FALSE ) 
           ENZO_FAIL("Cannot activate both PointSource and Disk gravity options for Isolated Galaxy");
@@ -654,12 +657,12 @@ double NFWDarkMatterMassEnclosed(double r){
   M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
   C = GalaxySimulationDMConcentration;  // concentration parameter for NFW halo
   
-  Rvir = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+  Rvir = POW(3.0/(4.0*pi)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
   Rs = Rvir/C;  // scale radius of NFW halo in CGS
   rho_0 = 200.0*POW(C,3)/3.0/(log(1.0+C) - C/(1.0+C))*rho_crit;  // rho_0 for NFW halo in CGS
 
   // mass w/in radius R
-  M_within_r = 4.0*3.14159*rho_0*POW(Rs,3.0)*(log((Rs+r)/Rs) - r/(Rs+r));
+  M_within_r = 4.0*pi*rho_0*POW(Rs,3.0)*(log((Rs+r)/Rs) - r/(Rs+r));
 
   return M_within_r;
   
@@ -777,37 +780,23 @@ float gasvel(FLOAT radius, float DiskDensity, FLOAT ExpansionFactor, float Galax
   PointSourceGravityConstant = (M_200/f_C)*(log(1.0+1.0)-1.0/(1.0+1.0))*1000.0 / MassUnitsDouble;
   PointSourceGravityCoreRadius = r_s*100.0 / LengthUnits;
 
-  /*
-  fprintf(stderr,"Grid::GalaxySimulationInitializeGrid:  %d  %e  %e\n",MyProcessorNumber,MassUnitsDouble, LengthUnits);
-  fprintf(stderr,"  PointSourceGravityConstant = %e  %d\n",PointSourceGravityConstant,MyProcessorNumber);
-  fprintf(stderr,"  PointSourceGravityCoreRadius = %e  %d\n",PointSourceGravityCoreRadius,MyProcessorNumber);
-  */
+  // Force per unit mass on disk (i.e. acceleration) [ms-2]
 
- // Force per unit mass on disk (i.e. acceleration) [ms-2]
-
-     Acc=((GravConst/1000.0)*M_Tot)/(r*r);
+  Acc=((GravConst/1000.0)*M_Tot)/(r*r);
 
  // Magnitude of Circular Velocity of disk 
 
-     V_Circ = sqrt(r*Acc)*100;       //cms-1
+  V_Circ = sqrt(r*Acc)*100;       //cms-1
 
-     /*      printf("r = %g  M_Tot = %g  Acc = %g  M_DM = %g  M_gas = %g  f_C = %g\n",
-       r, M_Tot, Acc, M_DM, M_gas, f_C);
-     printf("r_s = %g  DMConcentration = %g  r_200 = %g  r/r_s = %g\n",
-       r_s, DMConcentration, r_200, r/r_s);
-     printf("EF = %g  H = %g  OMEGA = %g\n", ExpansionFactor, H, OMEGA);
-     printf("radius = %g  v_circ = %g\n", radius, V_Circ);  */
-
-     return (V_Circ/VelocityUnits);  //code units
+  return (V_Circ/VelocityUnits);  //code units
 }
 
 
-
 //
-// Disk velocity with DiskGravity
+// Disk velocity with DiskGravity. Arguments should be in cgs
 //
 double DiskGravityStellarAccel(double rcyl, double z){
-    // return (cylindrical) radial component of acceleration ...? in cgs
+    // return (cylindrical) radial component of acceleration ...? in cgs?
     // Potential from  Miyamoto & Nagai 75
 
     double accelcylR;
@@ -824,7 +813,7 @@ double DiskGravityStellarAccel(double rcyl, double z){
     return accelcylR;
 }
 
-double DiskGravityBulgeAccel(double rsph) {
+double DiskGravityBulgeAccel(double rsph) { // cgs arguments
     double accelsph;
 
     accelsph = GravConst * DiskGravityStellarBulgeMass*SolarMass
@@ -835,11 +824,11 @@ double DiskGravityBulgeAccel(double rsph) {
 
 double DiskGravityCircularVelocity(double rsph, double rcyl, double z) {
     double acc, velmag;
-    acc = GravConst * NFWDarkMatterMassEnclosed(rsph)
+    acc = GravConst*NFWDarkMatterMassEnclosed(rsph)/POW(r,2)
         + DiskGravityStellarAccel(rcyl, z)
         + DiskGravityBulgeAccel(rsph);
 
-    velmag = sqrt(acc/rcyl); // or rsph rcyl???
+    velmag = sqrt(acc*rcyl); // cgs
 }
 
 /* Function for initializing chemistry */
