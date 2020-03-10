@@ -824,7 +824,7 @@ double DiskGravityBulgeAccel(double rsph) { // cgs arguments
 
 double DiskGravityCircularVelocity(double rsph, double rcyl, double z) {
     double acc, velmag;
-    acc = GravConst*NFWDarkMatterMassEnclosed(rsph)/POW(r,2)
+    acc = GravConst*NFWDarkMatterMassEnclosed(rsph)/POW(rsph,2)
         + DiskGravityStellarAccel(rcyl, z)
         + DiskGravityBulgeAccel(rsph);
 

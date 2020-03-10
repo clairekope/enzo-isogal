@@ -285,8 +285,10 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
       &GalaxySimulationInitialBfieldTopology);
     
     /* if the line is suspicious, issue a warning */
-    if (ret == 0 && strstr(line, "=") && strstr(line, "GalaxySimulation") 
-	&& line[0] != '#' && !strstr(line,"RPSWind") && !strstr(line,"PreWind"))
+    if (ret == 0 && strstr(line, "=") && line[0] != '#' 
+        && strstr(line, "GalaxySimulation") && !strstr(line, "DiskGravityDarkMatter")
+        && !strstr(line,"RPSWind") && !strstr(line,"PreWind") 
+        )
       fprintf(stderr, "warning: the following parameter line was not interpreted:\n%s\n", line);
 
   } // end input from parameter file
