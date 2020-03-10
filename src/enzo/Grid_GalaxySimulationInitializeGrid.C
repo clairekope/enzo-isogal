@@ -824,11 +824,13 @@ double DiskGravityBulgeAccel(double rsph) { // cgs arguments
 
 double DiskGravityCircularVelocity(double rsph, double rcyl, double z) {
     double acc, velmag;
+    
     acc = GravConst*NFWDarkMatterMassEnclosed(rsph)/POW(rsph,2)
         + DiskGravityStellarAccel(rcyl, z)
         + DiskGravityBulgeAccel(rsph);
 
     velmag = sqrt(acc*rcyl); // cgs
+    returm velmag;
 }
 
 /* Function for initializing chemistry */
