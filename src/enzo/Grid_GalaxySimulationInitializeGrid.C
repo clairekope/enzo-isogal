@@ -415,9 +415,13 @@ for (k = 0; k < GridDimension[2]; k++)
           theta = acos(zheight/r_sph);
 
           halo_vmag = RotationScaleVelocity // code units
-                      * sin(theta)*sin(theta)
                       * POW(r_sph/RotationScaleRadius, 
                             RotationPowerLawIndex);
+
+	  if (r_sph <= RotationScaleRadius)
+	    halo_vmag = RotationScaleVelocity;
+
+	  halo_vmag *= sin(theta)*sin(theta);
 	  
         /* Cylindrical velocity */
         Velocity[0] = halo_vmag * (AngularMomentum[1]*rp_hat[2] -
