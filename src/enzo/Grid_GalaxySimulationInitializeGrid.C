@@ -834,7 +834,7 @@ double DiskGravityCircularVelocity(double rsph, double rcyl, double z) {
         + DiskGravityBulgeAccel(rsph);
 
     velmag = sqrt(acc*rcyl); // cgs
-    returm velmag;
+    return velmag;
 }
 
 /* Function for initializing chemistry */
