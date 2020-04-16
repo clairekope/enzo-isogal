@@ -123,7 +123,7 @@ int grid::ComputeTemperatureField(float *temperature,int IncludeCRs)
     min_temperature = tiny_number;
   }
 
-  if (ProblemType == 31 && Time == 0) { // hardcode mu=0.6 for ICs only
+  if (ProblemType == 31 && this->_GalaxySimulationInitialization == 1) { // hardcode mu=0.6 for ICs only
     for (i = 0; i < size; i++)
       temperature[i] = max((TemperatureUnits*temperature[i]*0.6
 		         /max(BaryonField[DensNum][i], tiny_number)),

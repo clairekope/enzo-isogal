@@ -376,6 +376,9 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 	      == FAIL) {
       ENZO_FAIL("Error in GalaxySimulationInitialize[Sub]Grid.");
   }// end subgrid if
+    else {
+        TopGrid.GridData->_GalaxySimulationInitialization = 1;
+    }
 
   /* Convert minimum initial overdensity for refinement to mass
      (unless MinimumMass itself was actually set). */
@@ -453,6 +456,9 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 	      == FAIL) {
 	    ENZO_FAIL("Error in GalaxySimulationInitialize[Sub]Grid.");
 	}// end subgrid if
+    else {
+        Temp->GridData->_GalaxySimulationInitialization = 1;
+    }
 
 	Temp = Temp->NextGridThisLevel;
       }

@@ -2197,6 +2197,7 @@ int zEulerSweep(int j, int NumberOfSubgrids, fluxes *SubgridFluxes[],
 
 
   /* Initialization for isolated galaxy sims */
+  int _GalaxySimulationInitialization = 0;
   int GalaxySimulationInitializeGrid(
 				     FLOAT DiskRadius,
 				     FLOAT GalaxyMass,
