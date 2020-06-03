@@ -727,11 +727,11 @@ int SetDefaultGlobalValues(TopGridData &MetaData)
   H2StarMakerH2FloorInColdGas = 0.0;
   H2StarMakerColdGasTemperature = 1e4;
 
-  StarMakerThermalFeedbackRamp = 0;
-  StarMakerThermalFeedbackRampStartTime  = FLOAT_UNDEFINED;
-  StarMakerThermalFeedbackRampStartValue = FLOAT_UNDEFINED;
-  StarMakerThermalFeedbackRampEndTime    = FLOAT_UNDEFINED;
-  StarMakerThermalFeedbackRampEndValue   = FLOAT_UNDEFINED;
+  StarFeedbackThermalEfficiencyRamp = 0;
+  StarFeedbackThermalEfficiencyRampStartTime  = FLOAT_UNDEFINED;
+  StarFeedbackThermalEfficiencyRampStartValue = FLOAT_UNDEFINED;
+  StarFeedbackThermalEfficiencyRampEndTime    = FLOAT_UNDEFINED;
+  StarFeedbackThermalEfficiencyRampEndValue   = FLOAT_UNDEFINED;
 
   NumberOfParticleAttributes       = INT_UNDEFINED;
   AddParticleAttributes            = FALSE;

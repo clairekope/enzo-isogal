@@ -1071,16 +1071,16 @@ int ReadParameterFile(FILE *fptr, TopGridData &MetaData, float *Initialdt)
     ret += sscanf(line, "H2StarMakerColdGasTemperature = %"FSYM,
 		  &H2StarMakerColdGasTemperature);
 
-    ret += sscanf(line, "StarMakerThermalFeedbackRamp = %"ISYM,
-		  &StarMakerThermalFeedbackRamp);
-    ret += sscanf(line, "StarMakerThermalFeedbackRampStartTime = %"FSYM,
-		  &StarMakerThermalFeedbackRampStartTime);
-    ret += sscanf(line, "StarMakerThermalFeedbackRampStartValue = %"FSYM,
-		  &StarMakerThermalFeedbackRampStartValue);
-    ret += sscanf(line, "StarMakerThermalFeedbackRampEndTime = %"FSYM,
-		  &StarMakerThermalFeedbackRampEndTime);
-    ret += sscanf(line, "StarMakerThermalFeedbackRampEndValue = %"FSYM,
-		  &StarMakerThermalFeedbackRampEndValue);
+    ret += sscanf(line, "StarFeedbackThermalEfficiencyRamp = %"ISYM,
+		  &StarFeedbackThermalEfficiencyRamp);
+    ret += sscanf(line, "StarFeedbackThermalEfficiencyRampStartTime = %"FSYM,
+		  &StarFeedbackThermalEfficiencyRampStartTime);
+    ret += sscanf(line, "StarFeedbackThermalEfficiencyRampStartValue = %"FSYM,
+		  &StarFeedbackThermalEfficiencyRampStartValue);
+    ret += sscanf(line, "StarFeedbackThermalEfficiencyRampEndTime = %"FSYM,
+		  &StarFeedbackThermalEfficiencyRampEndTime);
+    ret += sscanf(line, "StarFeedbackThermalEfficiencyRampEndValue = %"FSYM,
+		  &StarFeedbackThermalEfficiencyRampEndValue);
 
     /* Read Movie Dump parameters */
 

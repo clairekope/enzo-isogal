@@ -467,7 +467,7 @@ int EvolveHierarchy(HierarchyEntry &TopGrid, TopGridData &MetaData,
     }
 
     /* Set evolving feedback efficiency */
-    if (StarMakerThermalFeedbackRamp > 0) {
+    if (StarFeedbackThermalEfficiencyRamp > 0) {
         if (SetStellarFeedbackEfficiency(MetaData.Time) == FAIL) 
 	  ENZO_FAIL("Error in SetStellarFeedbackEfficiency.");
     }
