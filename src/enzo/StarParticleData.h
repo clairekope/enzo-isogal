@@ -150,4 +150,10 @@ SPEXTERN int   StarMakerH2Crit;
 SPEXTERN int   StarMakerStochasticStarFormation;
 SPEXTERN float StarMakerTemperatureThreshold;
 
+SPEXTERN int StarMakerThermalFeedbackRamp;
+SPEXTERN float StarMakerThermalFeedbackRampStartTime;
+SPEXTERN float StarMakerThermalFeedbackRampStartValue;
+SPEXTERN float StarMakerThermalFeedbackRampEndTime;
+SPEXTERN float StarMakerThermalFeedbackRampEndValue;
+
 #endif

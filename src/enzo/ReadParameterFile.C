@@ -1071,6 +1071,17 @@ int ReadParameterFile(FILE *fptr, TopGridData &MetaData, float *Initialdt)
     ret += sscanf(line, "H2StarMakerColdGasTemperature = %"FSYM,
 		  &H2StarMakerColdGasTemperature);
 
+    ret += sscanf(line, "StarMakerThermalFeedbackRamp = %"ISYM,
+		  &StarMakerThermalFeedbackRamp);
+    ret += sscanf(line, "StarMakerThermalFeedbackRampStartTime = %"FSYM,
+		  &StarMakerThermalFeedbackRampStartTime);
+    ret += sscanf(line, "StarMakerThermalFeedbackRampStartValue = %"FSYM,
+		  &StarMakerThermalFeedbackRampStartValue);
+    ret += sscanf(line, "StarMakerThermalFeedbackRampEndTime = %"FSYM,
+		  &StarMakerThermalFeedbackRampEndTime);
+    ret += sscanf(line, "StarMakerThermalFeedbackRampEndValue = %"FSYM,
+		  &StarMakerThermalFeedbackRampEndValue);
+
     /* Read Movie Dump parameters */
 
     ret += sscanf(line, "MovieSkipTimestep = %"ISYM, &MovieSkipTimestep);

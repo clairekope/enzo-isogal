@@ -135,6 +135,8 @@ int MagneticFieldResetter(LevelHierarchyEntry *LevelArray[], int ThisLevel,
 void PrintMemoryUsage(char *str);
 int SetEvolveRefineRegion(FLOAT time);
 
+int SetStellarFeedbackEfficiency(FLOAT time);
+
 #ifdef MEM_TRACE
 Eint64 mused(void);
 #endif
@@ -462,6 +464,12 @@ int EvolveHierarchy(HierarchyEntry &TopGrid, TopGridData &MetaData,
     if ((RefineRegionTimeType == 1) || (RefineRegionTimeType == 0)) {
         if (SetEvolveRefineRegion(MetaData.Time) == FAIL) 
 	  ENZO_FAIL("Error in SetEvolveRefineRegion.");
+    }
+
+    /* Set evolving feedback efficiency */
+    if (StarMakerThermalFeedbackRamp > 0) {
+        if (SetStellarFeedbackEfficiency(MetaData.Time) == FAIL) 
+	  ENZO_FAIL("Error in SetStellarFeedbackEfficiency.");
     }
 
     /* Evolve the stochastic forcing spectrum and add

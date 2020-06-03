@@ -1073,6 +1073,12 @@ int WriteParameterFile(FILE *fptr, TopGridData &MetaData, char *name = NULL)
   fprintf(fptr, "H2StarMakerH2FloorInColdGas        = %"GSYM"\n\n", H2StarMakerH2FloorInColdGas);
   fprintf(fptr, "H2StarMakerColdGasTemperature      = %"GSYM"\n\n", H2StarMakerColdGasTemperature);
 
+  fprintf(fptr, "StarMakerThermalFeedbackRamp           = %"ISYM"\n", StarMakerThermalFeedbackRamp);
+  fprintf(fptr, "StarMakerThermalFeedbackRampStartTime  = %"GSYM"\n", StarMakerThermalFeedbackRampStartTime);
+  fprintf(fptr, "StarMakerThermalFeedbackRampStartValue  = %"GSYM"\n", StarMakerThermalFeedbackRampStartValue);
+  fprintf(fptr, "StarMakerThermalFeedbackRampEndTime    = %"GSYM"\n", StarMakerThermalFeedbackRampEndTime);
+  fprintf(fptr, "StarMakerThermalFeedbackRampEndValue   = %"GSYM"\n", StarMakerThermalFeedbackRampEndValue);
+
   /* Most Stanford additions: */
 
   fprintf(fptr, "UseHydro                   = %"ISYM"\n", UseHydro);
