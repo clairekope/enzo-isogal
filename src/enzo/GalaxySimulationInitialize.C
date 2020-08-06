@@ -108,7 +108,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
     GalaxySimulationDiskPosition[MAX_DIMENSION],
     GalaxySimulationDiskScaleHeightz,
     GalaxySimulationDiskScaleHeightR,
-    GalaxySimulationTruncationRadius;
+    GalaxySimulationTruncationRadius,
+    GalaxySimulationDiskDensityCap;
 
 
   FLOAT GalaxySimulationInitialTemperature,
@@ -154,6 +155,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
   GalaxySimulationDiskScaleHeightz   = 325e-6;   // Mpc
   GalaxySimulationDiskScaleHeightR   = 3500e-6;  // Mpc
   GalaxySimulationTruncationRadius   = .026; // [ Mpc ]
+  GalaxySimulationDiskDensityCap     = 0.0;
   GalaxySimulationDarkMatterConcentrationParameter = 12;
   GalaxySimulationGasMass            = 4.0e10;
   GalaxySimulationGalaxyMass         = 1.0e12;
@@ -227,6 +229,8 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 		  &GalaxySimulationDiskScaleHeightR);
     ret += sscanf(line, "GalaxySimulationTruncationRadius = %"PSYM,
 		  &GalaxySimulationTruncationRadius);
+    ret += sscanf(line, "GalaxySimulationDiskDensityCap = %"FSYM,
+		  &GalaxySimulationDiskDensityCap);    
     ret += sscanf(line, "GalaxySimulationDarkMatterConcentrationParameter = %"FSYM,
 		  &GalaxySimulationDarkMatterConcentrationParameter);
     ret += sscanf(line, "GalaxySimulationDiskTemperature = %"FSYM,
@@ -343,6 +347,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationDiskScaleHeightz,
 				GalaxySimulationDiskScaleHeightR,
 				GalaxySimulationTruncationRadius, 
+                GalaxySimulationDiskDensityCap,
 				GalaxySimulationDarkMatterConcentrationParameter,
 				GalaxySimulationDiskTemperature, 
 				GalaxySimulationInitialTemperature,
@@ -423,6 +428,7 @@ int GalaxySimulationInitialize(FILE *fptr, FILE *Outfptr,
 				GalaxySimulationDiskScaleHeightz,
 				GalaxySimulationDiskScaleHeightR,
 				GalaxySimulationTruncationRadius, 
+                GalaxySimulationDiskDensityCap,
 				GalaxySimulationDarkMatterConcentrationParameter,
 				GalaxySimulationDiskTemperature, 
 				GalaxySimulationInitialTemperature,

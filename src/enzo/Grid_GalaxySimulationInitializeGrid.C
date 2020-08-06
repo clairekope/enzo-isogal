@@ -130,7 +130,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT DiskPosition[MAX_DIMENSION], 
            FLOAT ScaleHeightz,
            FLOAT ScaleHeightR,
-           FLOAT GalaxyTruncationRadius, 
+           FLOAT GalaxyTruncationRadius,
+           FLOAT DiskDensityCap, 
            FLOAT DMConcentration,
            FLOAT DiskTemperature,
            FLOAT InitialTemperature,
@@ -483,6 +484,9 @@ for (k = 0; k < GridDimension[2]; k++)
                             CellWidth[0][0]*LengthUnits);
 
         disk_dens = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
+
+        if ((disk_dens > DiskDensityCap) && (DiskDensityCap > 0))
+            disk_dens = DiskDensityCap;
 
         /* Inside CGM */
         if (disk_dens < density)
