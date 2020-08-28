@@ -73,9 +73,17 @@ double bilinear_interp(double x, double y,
 
 float NFWDarkMatterMassEnclosed(FLOAT R);
 
+/* struct to carry around data required for circumgalactic media
+   if we need to generate radial profiles of halo quantities via 
+   numerical integration */
+struct CGMdata {
+  double *n_rad, *T_rad, *rad, R_outer, dr;
+  int nbins;
+};
+
 /* Internal Routines for CGM setup */
-float HaloGasDensity(FLOAT R);
-float HaloGasTemperature(FLOAT R);
+float HaloGasDensity(FLOAT R, struct CGMdata);
+float HaloGasTemperature(FLOAT R, struct CGMdata);
 
 /* Internal Routines for DiskGravity Setup */
 double DiskGravityCircularVelocity(double rsph, double rcyl, double z);
@@ -101,15 +109,6 @@ double GalaxySimulationGasHaloScaleRadius,
   GalaxySimulationDiskMetallicityEnhancementFactor,
   GalaxySimulationGasHaloRatio;
 
-/* struct to carry around data required for circumgalactic media
-   if we need to generate radial profiles of halo quantities via 
-   numerical integration */
-struct CGMdata {
-  double *n_rad, *T_rad, *rad, R_outer, dr;
-  int nbins;
-};
-struct CGMdata CGM_data;
-
 /* declarations for a bunch of functions needed to generate radial profiles
    of halo quantities via numerical integration - see the actual functions for
    descriptions. */
@@ -121,8 +120,8 @@ double halo_dP_dr(double r, double P, grid* Grid);
 double halo_g_of_r(double r);
 double halo_mod_g_of_r(double r);
 double halo_mod_DMmass_at_r(double r);
-void halo_init(grid* Grid, float Rstop=-1, float nbins=8192);
-void halo_clean(void);
+struct CGMdata halo_init(grid* Grid, float Rstop=-1, float nbins=8192);
+void halo_clean(struct CGMdata);
 
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT GalaxyMass,
@@ -306,7 +305,7 @@ RotationScaleRadius /= LengthUnits;  // cm to code length
 /*  initializes halo radius, density, temperature profiles 
     for circumgalactic medium if needed (i.e., for CGM profiles that
     require integration to get quantities we care about. */
-halo_init(this);
+ struct CGMdata CGM_data = halo_init(this);
 
 /* compute size of fields */
 size = 1;
@@ -366,8 +365,8 @@ for (k = 0; k < GridDimension[2]; k++)
                  POW(fabs(y-DiskPosition[1]), 2) );
     */
 
-    density = HaloGasDensity(r_sph)/DensityUnits;
-    temperature = disk_temp = init_temp = HaloGasTemperature(r_sph);
+    density = HaloGasDensity(r_sph, CGM_data)/DensityUnits;
+    temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, CGM_data);
     
 
     FLOAT xpos, ypos, zpos, rsph, zheight, rcyl, theta; 
@@ -629,7 +628,7 @@ for (k = 0; k < GridDimension[2]; k++)
 
   } // end loop over grids
 
-  halo_clean(); // deletes halo-related arrays if needed (for circumgalactic medium)
+  halo_clean(CGM_data); // deletes halo-related arrays if needed (for circumgalactic medium)
  
   return SUCCESS;
 
@@ -1144,7 +1143,7 @@ double bilinear_interp(double x, double y,
    GalaxySimulationGasHaloCoreEntropy, units of keV cm^2
    GalaxySimulationGasHaloMetallicity, units of Zsun
 */
-float HaloGasDensity(FLOAT R){
+float HaloGasDensity(FLOAT R, struct CGMdata CGM_data){
 
   if(GalaxySimulationGasHalo < 1){
     /* "zero CGM" - sets a very low density */
@@ -1156,8 +1155,9 @@ float HaloGasDensity(FLOAT R){
        as a function of radius given by virial theorem */
     
     double T0,haloDensity;
-    T0 = HaloGasTemperature(GalaxySimulationGasHaloScaleRadius*Mpc/LengthUnits);
-    haloDensity = GalaxySimulationGasHaloDensity*(T0/HaloGasTemperature(R));
+    T0 = HaloGasTemperature(GalaxySimulationGasHaloScaleRadius*Mpc/LengthUnits,
+			    CGM_data);
+    haloDensity = GalaxySimulationGasHaloDensity*(T0/HaloGasTemperature(R, CGM_data));
     haloDensity /= POW((R*LengthUnits/GalaxySimulationGasHaloScaleRadius/Mpc),3);
     return min(haloDensity,GalaxySimulationGasHaloDensity);
     
@@ -1248,7 +1248,7 @@ float HaloGasDensity(FLOAT R){
    Returns:  Temperature, Kelvin
 */
 
-float HaloGasTemperature(FLOAT R){
+float HaloGasTemperature(FLOAT R, struct CGMdata CGM_data){
 
   if(GalaxySimulationGasHalo < 1){
     /* "zero CGM" - sets a very low temperature */
@@ -1307,9 +1307,11 @@ float HaloGasTemperature(FLOAT R){
    with arrays of size nbins for convenience (global within this file, at least).
    Rstop is the outer boundary of the integrtation in CGS; if negative, |Rstop|*R200 is used. 
    nbins defaults to 8192. */
-void halo_init(grid* Grid, float Rstop, float nbins){
+struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
 
-  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return;
+  struct CGMdata CGM_data;
+  
+  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return CGM_data;
 
   double k1, k2, k3, k4;
   double M, R200, rho_crit = 1.8788e-29*0.49;
@@ -1499,12 +1501,12 @@ void halo_init(grid* Grid, float Rstop, float nbins){
   CGM_data.n_rad[0]=CGM_data.n_rad[1];
   CGM_data.T_rad[0]=CGM_data.T_rad[1];
   
-  return;
+  return CGM_data;
 }
 
 /* If we declared these arrays, clean them up at the end of the problem initialization. 
    Software campsite principle. */
-void halo_clean(void){
+void halo_clean(struct CGMdata CGM_data){
 
   if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return;
 
