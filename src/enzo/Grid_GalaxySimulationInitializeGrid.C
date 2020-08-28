@@ -121,7 +121,7 @@ double halo_dP_dr(double r, double P, grid* Grid);
 double halo_g_of_r(double r);
 double halo_mod_g_of_r(double r);
 double halo_mod_DMmass_at_r(double r);
-void halo_init(grid* Grid);
+void halo_init(grid* Grid, float Rstop=-1, float nbins=8192);
 void halo_clean(void);
 
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
@@ -1304,8 +1304,10 @@ float HaloGasTemperature(FLOAT R){
 /* Initializes arrays of number density, temperature, and radius for 
    choices of circumgalactic medium that require numerical integration based
    on user-defined parameters.  These quantities are stored in a global struct
-   for convenience (global within this file, at least). */
-void halo_init(grid* Grid){
+   with arrays of size nbins for convenience (global within this file, at least).
+   Rstop is the outer boundary of the integrtation in CGS; if negative, |Rstop|*Rvir is used. 
+   nbins defaults to 8192. */
+void halo_init(grid* Grid, float Rstop, float nbins){
 
   if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return;
 
@@ -1314,7 +1316,7 @@ void halo_init(grid* Grid){
 
   int index;
   
-  CGM_data.nbins = 8192;
+  CGM_data.nbins = nbins;
   
   CGM_data.n_rad = new double[CGM_data.nbins];
   CGM_data.T_rad = new double[CGM_data.nbins];
@@ -1326,7 +1328,9 @@ void halo_init(grid* Grid){
   
   Rvir = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
 
-  CGM_data.R_outer = 3.0*Rvir;  // integrate out to the virial radius of halo
+  if (Rstop < 0)
+    Rstop = fabs(Rstop)*Rvir;
+  CGM_data.R_outer = Rstop;// integrate out to the virial radius of halo
 
   CGM_data.dr = CGM_data.R_outer / double(CGM_data.nbins);  // stepsize for RK4 integration and radial bins
   
