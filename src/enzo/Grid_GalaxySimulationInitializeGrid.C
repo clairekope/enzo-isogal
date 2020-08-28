@@ -656,7 +656,7 @@ for (k = 0; k < GridDimension[2]; k++)
 */
 double NFWDarkMatterMassEnclosed(double r){
 
-  double M, C, Rvir, rho_0, Rs, M_within_r;
+  double M, C, R200, rho_0, Rs, M_within_r;
   double rho_crit = 1.8788e-29*0.49;
   
   // GSDarkMatterConcentration is the same as DiskGravityDarkMatterConcentration
@@ -665,8 +665,8 @@ double NFWDarkMatterMassEnclosed(double r){
   M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
   C = GalaxySimulationDMConcentration;  // concentration parameter for NFW halo
   
-  Rvir = POW(3.0/(4.0*pi)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
-  Rs = Rvir/C;  // scale radius of NFW halo in CGS
+  R200 = POW(3.0/(4.0*pi)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+  Rs = R200/C;  // scale radius of NFW halo in CGS
   rho_0 = 200.0*POW(C,3)/3.0/(log(1.0+C) - C/(1.0+C))*rho_crit;  // rho_0 for NFW halo in CGS
 
   // mass w/in radius R
@@ -1305,14 +1305,14 @@ float HaloGasTemperature(FLOAT R){
    choices of circumgalactic medium that require numerical integration based
    on user-defined parameters.  These quantities are stored in a global struct
    with arrays of size nbins for convenience (global within this file, at least).
-   Rstop is the outer boundary of the integrtation in CGS; if negative, |Rstop|*Rvir is used. 
+   Rstop is the outer boundary of the integrtation in CGS; if negative, |Rstop|*R200 is used. 
    nbins defaults to 8192. */
 void halo_init(grid* Grid, float Rstop, float nbins){
 
   if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return;
 
   double k1, k2, k3, k4;
-  double M, Rvir, rho_crit = 1.8788e-29*0.49;
+  double M, R200, rho_crit = 1.8788e-29*0.49;
 
   int index;
   
@@ -1326,10 +1326,10 @@ void halo_init(grid* Grid, float Rstop, float nbins){
   
   M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
   
-  Rvir = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+  R200 = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
 
   if (Rstop < 0)
-    Rstop = fabs(Rstop)*Rvir;
+    Rstop = fabs(Rstop)*R200;
   CGM_data.R_outer = Rstop;// integrate out to the virial radius of halo
 
   CGM_data.dr = CGM_data.R_outer / double(CGM_data.nbins);  // stepsize for RK4 integration and radial bins
@@ -1420,10 +1420,10 @@ void halo_init(grid* Grid, float Rstop, float nbins){
     
     // boundary condition & quantities for integration
     dr = -1.0*CGM_data.dr;
-    this_radius = Rvir;
+    this_radius = R200;
     this_ent = halo_S_of_r(this_radius, Grid); // in erg*cm^2
 
-    rmax = 2.163*Rvir/GalaxySimulationDMConcentration;
+    rmax = 2.163*R200/GalaxySimulationDMConcentration;
     vcirc2_max = GravConst * halo_mod_DMmass_at_r(rmax)/rmax;
     this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
 		     Gamma/(Gamma-1.));
@@ -1434,7 +1434,7 @@ void halo_init(grid* Grid, float Rstop, float nbins){
     CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     CGM_data.rad[index] = this_radius;
 
-    // integrate inward from Rvir    
+    // integrate inward from R200    
     while(this_radius > 0.0){
       
       // calculate RK4 coefficients.
@@ -1459,10 +1459,10 @@ void halo_init(grid* Grid, float Rstop, float nbins){
     
     // Reset to boundary state
     dr = CGM_data.dr;
-    this_radius = Rvir;
+    this_radius = R200;
     this_ent = halo_S_of_r(this_radius, Grid); // in erg*cm^2
 
-    rmax = 2.163*Rvir/GalaxySimulationDMConcentration;
+    rmax = 2.163*R200/GalaxySimulationDMConcentration;
     vcirc2_max = GravConst * halo_mod_DMmass_at_r(rmax)/rmax;
     this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
 		     Gamma/(Gamma-1.));
@@ -1669,14 +1669,14 @@ double halo_mod_g_of_r(double r){
 */
 double halo_mod_DMmass_at_r(double r){
 
-  double M, C, Rvir, Rs, Rmax;
+  double M, C, R200, Rs, Rmax;
   double rho_crit = 1.8788e-29*0.49;
   
   M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
   C = GalaxySimulationDMConcentration;  // concentration parameter for NFW halo
   
-  Rvir = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
-  Rs = Rvir/C;  // scale radius of NFW halo in CGS
+  R200 = POW(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
+  Rs = R200/C;  // scale radius of NFW halo in CGS
   Rmax = 2.163*Rs;
   
   if (r <= Rmax) {
