@@ -77,13 +77,29 @@ float NFWDarkMatterMassEnclosed(FLOAT R);
    if we need to generate radial profiles of halo quantities via 
    numerical integration */
 struct CGMdata {
-  double *n_rad, *T_rad, *rad, R_outer, dr;
+  double *n_rad, *T_rad, *rad;
   int nbins;
+  double R_inner, R_outer, dr;
+
+  CGMdata() {
+    n_rad = nullptr;
+    T_rad = nullptr;
+    rad = nullptr;
+  }
+  
+  ~CGMdata() {
+    if (n_rad) delete[] n_rad;
+    if (T_rad) delete[] T_rad;
+    if (rad) delete[] rad;
+    n_rad = nullptr;
+    T_rad = nullptr;
+    rad = nullptr;
+  }
 };
 
 /* Internal Routines for CGM setup */
-float HaloGasDensity(FLOAT R, struct CGMdata);
-float HaloGasTemperature(FLOAT R, struct CGMdata);
+float HaloGasDensity(FLOAT R, struct CGMdata&);
+float HaloGasTemperature(FLOAT R, struct CGMdata&);
 
 /* Internal Routines for DiskGravity Setup */
 double DiskGravityCircularVelocity(double rsph, double rcyl, double z);
@@ -116,12 +132,13 @@ double halo_S_of_r(double r);
 double halo_S_of_r(double r, grid* Grid);
 double halo_dSdr(double r, double n);
 double halo_dn_dr(double r, double n);
+double halo_dP_dr(double r, double P, double T);
 double halo_dP_dr(double r, double P, grid* Grid);
 double halo_g_of_r(double r);
 double halo_mod_g_of_r(double r);
 double halo_mod_DMmass_at_r(double r);
-struct CGMdata halo_init(grid* Grid, float Rstop=-1, float nbins=8192);
-void halo_clean(struct CGMdata);
+void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override=0, float Rstop=-1, float nbins=8192);
+
 
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT GalaxyMass,
@@ -163,473 +180,498 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
            FLOAT GalaxySimulationCR
           )
 {
- /* declarations */
+  /* declarations */
 
-int dim, i, j, k, m, field, disk, size, MetalNum, MetalIaNum, vel;
-int DeNum, HINum, HIINum, HeINum, HeIINum, HeIIINum, HMNum, H2INum,
+  int dim, i, j, k, m, field, disk, size, MetalNum, MetalIaNum, vel;
+  int DeNum, HINum, HIINum, HeINum, HeIINum, HeIIINum, HMNum, H2INum,
     H2IINum, DINum, DIINum, HDINum, B1Num, B2Num, B3Num, PhiNum;
-float DiskDensity, DiskVelocityMag;
-int CRNum, DensNum;
+  float DiskDensity, DiskVelocityMag;
+  int CRNum, DensNum;
 
-/* global-scope variables for disk potential functions (would be better if not global) */
+  /* global-scope variables for disk potential functions (would be better if not global) */
 
-gScaleHeightR = ScaleHeightR;
-gScaleHeightz = ScaleHeightz;
-densicm = UniformDensity;  // gas density if no halo is used
-MgasScale = GasMass;
-Ticm = InitialTemperature;  // gas temperature if no halo is used
-Picm = kboltz*UniformDensity*Ticm/(mu*mh);  // gas pressure if no halo is used
-TruncRadius = GalaxyTruncationRadius;
-SmoothRadius = TruncRadius*.02/.026;
-SmoothLength = TruncRadius - SmoothRadius;
+  gScaleHeightR = ScaleHeightR;
+  gScaleHeightz = ScaleHeightz;
+  densicm = UniformDensity;  // gas density if no halo is used
+  MgasScale = GasMass;
+  Ticm = InitialTemperature;  // gas temperature if no halo is used
+  Picm = kboltz*UniformDensity*Ticm/(mu*mh);  // gas pressure if no halo is used
+  TruncRadius = GalaxyTruncationRadius;
+  SmoothRadius = TruncRadius*.02/.026;
+  SmoothLength = TruncRadius - SmoothRadius;
 
-/* set all of the gas halo quantities to variables that are global
-   within this file, so the calls to HaloGasDensity() and HaloGasTemperature()
-   are unchanged. */
-EquilibrateChem = EquilChem;
-GalaxySimulationGasHalo = GasHalo;   // integer, >= 0
-GalaxySimulationGasHaloScaleRadius = GasHaloScaleRadius;  // in mpc
-GalaxySimulationGasHaloDensity = GasHaloDensity; // in grams/cm^3
-GalaxySimulationGasHaloDensity2 = GasHaloDensity2;
-GalaxySimulationGasHaloTemperature = GasHaloTemperature;  // in Kelvin
-GalaxySimulationGasHaloAlpha = GasHaloAlpha;  // power-law index; unitless
-GalaxySimulationGasHaloZeta = GasHaloZeta;
-GalaxySimulationGasHaloZeta2 = GasHaloZeta2;
-GalaxySimulationGasHaloCoreEntropy = GasHaloCoreEntropy;  // power-law index; unitless
-GalaxySimulationGasHaloRatio = GasHaloRatio; // ratio of cooling time to freefall time
-GalaxySimulationGalaxyMass = GalaxyMass;
-GalaxySimulationDMConcentration = DMConcentration;
-GalaxySimulationGasHaloMetallicity = GasHaloMetallicity; // Zsun
-GalaxySimulationDiskMetallicityEnhancementFactor = DiskMetallicityEnhancementFactor; // w.r.t to halo
+  /* set all of the gas halo quantities to variables that are global
+     within this file, so the calls to HaloGasDensity() and HaloGasTemperature()
+     are unchanged. */
+  EquilibrateChem = EquilChem;
+  GalaxySimulationGasHalo = GasHalo;   // integer, >= 0
+  GalaxySimulationGasHaloScaleRadius = GasHaloScaleRadius;  // in mpc
+  GalaxySimulationGasHaloDensity = GasHaloDensity; // in grams/cm^3
+  GalaxySimulationGasHaloDensity2 = GasHaloDensity2;
+  GalaxySimulationGasHaloTemperature = GasHaloTemperature;  // in Kelvin
+  GalaxySimulationGasHaloAlpha = GasHaloAlpha;  // power-law index; unitless
+  GalaxySimulationGasHaloZeta = GasHaloZeta;
+  GalaxySimulationGasHaloZeta2 = GasHaloZeta2;
+  GalaxySimulationGasHaloCoreEntropy = GasHaloCoreEntropy;  // power-law index; unitless
+  GalaxySimulationGasHaloRatio = GasHaloRatio; // ratio of cooling time to freefall time
+  GalaxySimulationGalaxyMass = GalaxyMass;
+  GalaxySimulationDMConcentration = DMConcentration;
+  GalaxySimulationGasHaloMetallicity = GasHaloMetallicity; // Zsun
+  GalaxySimulationDiskMetallicityEnhancementFactor = DiskMetallicityEnhancementFactor; // w.r.t to halo
  
-/* create fields */
-NumberOfBaryonFields = 0;
-DensNum = NumberOfBaryonFields;
-FieldType[NumberOfBaryonFields++] = Density;
-FieldType[NumberOfBaryonFields++] = TotalEnergy;
-if (DualEnergyFormalism)
-  FieldType[NumberOfBaryonFields++] = InternalEnergy;
-vel = NumberOfBaryonFields;
-FieldType[NumberOfBaryonFields++] = Velocity1;
-if (GridRank > 1) 
-  FieldType[NumberOfBaryonFields++] = Velocity2;
-if (GridRank > 2)
-  FieldType[NumberOfBaryonFields++] = Velocity3;
-if (UseMHD) {
-  FieldType[B1Num = NumberOfBaryonFields++] = Bfield1;
-  FieldType[B2Num = NumberOfBaryonFields++] = Bfield2;
-  FieldType[B3Num = NumberOfBaryonFields++] = Bfield3;
+  /* create fields */
+  NumberOfBaryonFields = 0;
+  DensNum = NumberOfBaryonFields;
+  FieldType[NumberOfBaryonFields++] = Density;
+  FieldType[NumberOfBaryonFields++] = TotalEnergy;
+  if (DualEnergyFormalism)
+    FieldType[NumberOfBaryonFields++] = InternalEnergy;
+  vel = NumberOfBaryonFields;
+  FieldType[NumberOfBaryonFields++] = Velocity1;
+  if (GridRank > 1) 
+    FieldType[NumberOfBaryonFields++] = Velocity2;
+  if (GridRank > 2)
+    FieldType[NumberOfBaryonFields++] = Velocity3;
+  if (UseMHD) {
+    FieldType[B1Num = NumberOfBaryonFields++] = Bfield1;
+    FieldType[B2Num = NumberOfBaryonFields++] = Bfield2;
+    FieldType[B3Num = NumberOfBaryonFields++] = Bfield3;
   }
-if(HydroMethod == MHD_RK ){
-  FieldType[PhiNum = NumberOfBaryonFields++] = PhiField;
+  if(HydroMethod == MHD_RK ){
+    FieldType[PhiNum = NumberOfBaryonFields++] = PhiField;
   }
-if (UseDivergenceCleaning) {
-  FieldType[NumberOfBaryonFields++] = Phi_pField;
+  if (UseDivergenceCleaning) {
+    FieldType[NumberOfBaryonFields++] = Phi_pField;
   }
 
-/* If cosmic rays present, set up field */
-CRNum = NumberOfBaryonFields;
-if( CRModel )
-  FieldType[NumberOfBaryonFields++] = CRDensity;
+  /* If cosmic rays present, set up field */
+  CRNum = NumberOfBaryonFields;
+  if( CRModel )
+    FieldType[NumberOfBaryonFields++] = CRDensity;
 
-if (MultiSpecies) {
-  FieldType[DeNum    = NumberOfBaryonFields++] = ElectronDensity;
-  FieldType[HINum    = NumberOfBaryonFields++] = HIDensity;
-  FieldType[HIINum   = NumberOfBaryonFields++] = HIIDensity;
-  FieldType[HeINum   = NumberOfBaryonFields++] = HeIDensity;
-  FieldType[HeIINum  = NumberOfBaryonFields++] = HeIIDensity;
-  FieldType[HeIIINum = NumberOfBaryonFields++] = HeIIIDensity;
-  if (MultiSpecies > 1) {
-    FieldType[HMNum    = NumberOfBaryonFields++] = HMDensity;
-    FieldType[H2INum   = NumberOfBaryonFields++] = H2IDensity;
-    FieldType[H2IINum  = NumberOfBaryonFields++] = H2IIDensity;
+  if (MultiSpecies) {
+    FieldType[DeNum    = NumberOfBaryonFields++] = ElectronDensity;
+    FieldType[HINum    = NumberOfBaryonFields++] = HIDensity;
+    FieldType[HIINum   = NumberOfBaryonFields++] = HIIDensity;
+    FieldType[HeINum   = NumberOfBaryonFields++] = HeIDensity;
+    FieldType[HeIINum  = NumberOfBaryonFields++] = HeIIDensity;
+    FieldType[HeIIINum = NumberOfBaryonFields++] = HeIIIDensity;
+    if (MultiSpecies > 1) {
+      FieldType[HMNum    = NumberOfBaryonFields++] = HMDensity;
+      FieldType[H2INum   = NumberOfBaryonFields++] = H2IDensity;
+      FieldType[H2IINum  = NumberOfBaryonFields++] = H2IIDensity;
+    }
+    if (MultiSpecies > 2) {
+      FieldType[DINum   = NumberOfBaryonFields++] = DIDensity;
+      FieldType[DIINum  = NumberOfBaryonFields++] = DIIDensity;
+      FieldType[HDINum  = NumberOfBaryonFields++] = HDIDensity;
+    }
   }
-  if (MultiSpecies > 2) {
-    FieldType[DINum   = NumberOfBaryonFields++] = DIDensity;
-    FieldType[DIINum  = NumberOfBaryonFields++] = DIIDensity;
-    FieldType[HDINum  = NumberOfBaryonFields++] = HDIDensity;
-  }
-}
 
-if (UseMetallicityField)
-  FieldType[MetalNum = NumberOfBaryonFields++] = Metallicity; /* fake it with metals */
-if (StarMakerTypeIaSNe)
-  FieldType[MetalIaNum = NumberOfBaryonFields++] = MetalSNIaDensity;
+  if (UseMetallicityField)
+    FieldType[MetalNum = NumberOfBaryonFields++] = Metallicity; /* fake it with metals */
+  if (StarMakerTypeIaSNe)
+    FieldType[MetalIaNum = NumberOfBaryonFields++] = MetalSNIaDensity;
 
-/* Return if this doesn't concern us. */
+  /* Return if this doesn't concern us. */
 
-if (ProcessorNumber != MyProcessorNumber) 
-  return SUCCESS;
+  if (ProcessorNumber != MyProcessorNumber) 
+    return SUCCESS;
 
-/* Set various units. */
+  /* Set various units. */
 
-float CriticalDensity = 1, BoxLength = 1;
-FLOAT a, dadt, ExpansionFactor = 1;
-if (ComovingCoordinates) {
-  CosmologyComputeExpansionFactor(Time, &a, &dadt);
-  ExpansionFactor = a/(1.0+InitialRedshift);
-  CosmologyGetUnits(&DensityUnits, &LengthUnits, &TemperatureUnits,
-                    &TimeUnits, &VelocityUnits, Time);
-  CriticalDensity = 2.78e11*POW(HubbleConstantNow, 2); // in Msolar/Mpc^3
-  BoxLength = ComovingBoxSize*ExpansionFactor/HubbleConstantNow;  // in Mpc
-} else if( PointSourceGravity ){
-  ENZO_FAIL("ERROR IN GALAXY SIM GRID INITIALIZE: non-cosmology units not supported for point source gravity");
-} else {
-  if (GetUnits(&DensityUnits, &LengthUnits, &TemperatureUnits,
+  float CriticalDensity = 1, BoxLength = 1;
+  FLOAT a, dadt, ExpansionFactor = 1;
+  if (ComovingCoordinates) {
+    CosmologyComputeExpansionFactor(Time, &a, &dadt);
+    ExpansionFactor = a/(1.0+InitialRedshift);
+    CosmologyGetUnits(&DensityUnits, &LengthUnits, &TemperatureUnits,
+		      &TimeUnits, &VelocityUnits, Time);
+    CriticalDensity = 2.78e11*POW(HubbleConstantNow, 2); // in Msolar/Mpc^3
+    BoxLength = ComovingBoxSize*ExpansionFactor/HubbleConstantNow;  // in Mpc
+  } else if( PointSourceGravity ){
+    ENZO_FAIL("ERROR IN GALAXY SIM GRID INITIALIZE: non-cosmology units not supported for point source gravity");
+  } else {
+    if (GetUnits(&DensityUnits, &LengthUnits, &TemperatureUnits,
                  &TimeUnits, &VelocityUnits, Time) == FAIL) {
-    ENZO_FAIL("Error in GetUnits.");
-  } // end get units error if  
-} // end units if/else
+      ENZO_FAIL("Error in GetUnits.");
+    } // end get units error if  
+  } // end units if/else
  
-/* correct background density if it's not given in code units */
-if( UniformDensity < 1.0E-10 ){
-  UniformDensity /= DensityUnits;
-  if( debug && MyProcessorNumber == ROOT_PROCESSOR ) 
-    fprintf(stdout,"Converting GalaxySimulationUniformDensity = %"GSYM" from CGS to code units\n",UniformDensity);
-} // end uniform density if
+  /* correct background density if it's not given in code units */
+  if( UniformDensity < 1.0E-10 ){
+    UniformDensity /= DensityUnits;
+    if( debug && MyProcessorNumber == ROOT_PROCESSOR ) 
+      fprintf(stdout,"Converting GalaxySimulationUniformDensity = %"GSYM" from CGS to code units\n",UniformDensity);
+  } // end uniform density if
 
-/* Set up inflow */
-if (GalaxySimulationInflowTime > 0.0){
-  TimeActionType[0] = 2;
-  TimeActionParameter[0] = GalaxySimulationInflowDensity*DensityUnits;
-  TimeActionTime[0] = GalaxySimulationInflowTime*1e9/TimeUnits;
-}
+  /* Set up inflow */
+  if (GalaxySimulationInflowTime > 0.0){
+    TimeActionType[0] = 2;
+    TimeActionParameter[0] = GalaxySimulationInflowDensity*DensityUnits;
+    TimeActionTime[0] = GalaxySimulationInflowTime*1e9/TimeUnits;
+  }
 
-/* Scale gas halo rotation quantities to code units.
- * gas halo rotation variable are NOT global */
-RotationScaleVelocity *= CM_PER_KM; // km/s to cm/s
-RotationScaleVelocity /= LengthUnits/TimeUnits; // cm/s to code length/code time
-RotationScaleRadius *= CM_PER_KPC;  // kpc to cm
-RotationScaleRadius /= LengthUnits;  // cm to code length
+  /* Scale gas halo rotation quantities to code units.
+   * gas halo rotation variable are NOT global */
+  RotationScaleVelocity *= CM_PER_KM; // km/s to cm/s
+  RotationScaleVelocity /= LengthUnits/TimeUnits; // cm/s to code length/code time
+  RotationScaleRadius *= CM_PER_KPC;  // kpc to cm
+  RotationScaleRadius /= LengthUnits;  // cm to code length
 
-/*  initializes halo radius, density, temperature profiles 
-    for circumgalactic medium if needed (i.e., for CGM profiles that
-    require integration to get quantities we care about. */
- struct CGMdata CGM_data = halo_init(this);
+  /*  initializes halo radius, density, temperature profiles 
+      for circumgalactic medium if needed (i.e., for CGM profiles that
+      require integration to get quantities we care about. 
+      Assumes disk is located at the center of the domain. */
+  struct CGMdata CGM_data, outskirts;
+  halo_init(CGM_data, this);
+  printf("made primary halo\n");
 
-/* compute size of fields */
-size = 1;
-for (dim = 0; dim < GridRank; dim++)
-  size *= GridDimension[dim];
+  if (GalaxySimulationGasHalo == 6) {
 
-/* allocate fields */
-this->AllocateGrids();
+    double far_left, far_right, domain_width;
 
-/* I'm commenting this out because the metal field should
-   be set during grid initialization rather than just setting
-   it as a constant color field. -- DWS */
-// /* set metals to small value */
-//  if (UseMetallicityField)
-//    for (i = 0; i < size; i++)
-//      BaryonField[MetalNum][i] = 1.0e-10;
- 
-/* Loop over the mesh. */
-float density, disk_dens;
-FLOAT halo_vmag, disk_vel[MAX_DIMENSION], Velocity[MAX_DIMENSION];
-FLOAT temperature, disk_temp, init_temp, initial_metallicity;
-FLOAT r_sph, x, y = 0, z = 0;
-int n = 0, iter;
-
-for (k = 0; k < GridDimension[2]; k++)
-  for (j = 0; j < GridDimension[1]; j++)
-    for (i = 0; i < GridDimension[0]; i++, n++) {
-
-    if (UseMetallicityField) {
-      /* Set a background metallicity value that will scale with density.
-      If the cell is in the disk, this wifll be increased by a factor
-      of 3.  This should really be a parameter that is read in -- DWS */ 
-      initial_metallicity = GalaxySimulationGasHaloMetallicity;
+    far_left = GridLeftEdge[0];
+    far_right = GridRightEdge[0];
+  
+    for (int i=1; i<GridRank; i++) {
+      if (GridLeftEdge[i] < far_left)
+	far_left = GridLeftEdge[i];
+      if (GridRightEdge[i] > far_right)
+	far_right = GridRightEdge[i];
     }
 
-    /* Compute position */
+    domain_width = (far_right - far_left) * LengthUnits;
+  
+    halo_init(outskirts, this, 7, domain_width/2, 4096);
+    printf("made secondary halo\n");
+  }
+  
+  /* compute size of fields */
+  size = 1;
+  for (dim = 0; dim < GridRank; dim++)
+    size *= GridDimension[dim];
 
-    x = CellLeftEdge[0][i] + 0.5*CellWidth[0][i];
-    if (GridRank > 1)
-      y = CellLeftEdge[1][j] + 0.5*CellWidth[1][j];
-    if (GridRank > 2)
-      z = CellLeftEdge[2][k] + 0.5*CellWidth[2][k];
+  /* allocate fields */
+  this->AllocateGrids();
 
-    for (dim = 0; dim < MAX_DIMENSION; dim++)
-      Velocity[dim] = 0;
-      disk_vel[dim] = 0;
+  /* I'm commenting this out because the metal field should
+     be set during grid initialization rather than just setting
+     it as a constant color field. -- DWS */
+  // /* set metals to small value */
+  //  if (UseMetallicityField)
+  //    for (i = 0; i < size; i++)
+  //      BaryonField[MetalNum][i] = 1.0e-10;
+ 
+  /* Loop over the mesh. */
+  float density, disk_dens;
+  FLOAT halo_vmag, disk_vel[MAX_DIMENSION], Velocity[MAX_DIMENSION];
+  FLOAT temperature, disk_temp, init_temp, initial_metallicity;
+  FLOAT r_sph, x, y = 0, z = 0;
+  int n = 0, iter;
 
-    /* Find distance from center. */
+  for (k = 0; k < GridDimension[2]; k++)
+    for (j = 0; j < GridDimension[1]; j++)
+      for (i = 0; i < GridDimension[0]; i++, n++) {
 
-    r_sph = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
-                 POW(fabs(y-DiskPosition[1]), 2) +
-                 POW(fabs(z-DiskPosition[2]), 2) );
-    r_sph = max(r_sph, 0.1*CellWidth[0][0]);
+	if (UseMetallicityField) {
+	  /* Set a background metallicity value that will scale with density.
+	     If the cell is in the disk, this wifll be increased by a factor
+	     of 3.  This should really be a parameter that is read in -- DWS */ 
+	  initial_metallicity = GalaxySimulationGasHaloMetallicity;
+	}
+
+	/* Compute position */
+
+	x = CellLeftEdge[0][i] + 0.5*CellWidth[0][i];
+	if (GridRank > 1)
+	  y = CellLeftEdge[1][j] + 0.5*CellWidth[1][j];
+	if (GridRank > 2)
+	  z = CellLeftEdge[2][k] + 0.5*CellWidth[2][k];
+
+	for (dim = 0; dim < MAX_DIMENSION; dim++)
+	  Velocity[dim] = 0;
+	disk_vel[dim] = 0;
+
+	/* Find distance from center. */
+
+	r_sph = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
+		     POW(fabs(y-DiskPosition[1]), 2) +
+		     POW(fabs(z-DiskPosition[2]), 2) );
+	r_sph = max(r_sph, 0.1*CellWidth[0][0]);
     
-    /*
-    r_cyl = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
-                 POW(fabs(y-DiskPosition[1]), 2) );
-    */
+	/*
+	  r_cyl = sqrt(POW(fabs(x-DiskPosition[0]), 2) +
+	  POW(fabs(y-DiskPosition[1]), 2) );
+	*/
 
-    density = HaloGasDensity(r_sph, CGM_data)/DensityUnits;
-    temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, CGM_data);
-    
+	density = HaloGasDensity(r_sph, CGM_data)/DensityUnits;
+	temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, CGM_data); // seg fault
 
-    FLOAT xpos, ypos, zpos, rsph, zheight, rcyl, theta; 
-    float CellMass;
-    FLOAT rp_hat[3];
-    FLOAT yhat[3];
+	if (GalaxySimulationGasHalo == 7 && r_sph*LengthUnits > outskirts.R_inner) {
+	  density = HaloGasDensity(r_sph, outskirts)/DensityUnits;
+	  temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, outskirts);
+	}
 
-    /* Loop over dims if using Zeus (since vel's face-centered). */
+	FLOAT xpos, ypos, zpos, rsph, zheight, rcyl, theta; 
+	float CellMass;
+	FLOAT rp_hat[3];
+	FLOAT yhat[3];
 
-    for (dim = 0; dim < 1+(HydroMethod == Zeus_Hydro ? GridRank : 0);
-         dim++) {
+	/* Loop over dims if using Zeus (since vel's face-centered). */
 
-      /* Compute position. */
+	for (dim = 0; dim < 1+(HydroMethod == Zeus_Hydro ? GridRank : 0);
+	     dim++) {
 
-      xpos = x-DiskPosition[0]-(dim == 1 ? 0.5*CellWidth[0][0] : 0.0);
-      ypos = y-DiskPosition[1]-(dim == 2 ? 0.5*CellWidth[1][0] : 0.0);
-      zpos = z-DiskPosition[2]-(dim == 3 ? 0.5*CellWidth[2][0] : 0.0);
+	  /* Compute position. */
 
-      /* Compute z and r_perp (AngularMomentum is angular momentum 
-         and must have unit length). */    
+	  xpos = x-DiskPosition[0]-(dim == 1 ? 0.5*CellWidth[0][0] : 0.0);
+	  ypos = y-DiskPosition[1]-(dim == 2 ? 0.5*CellWidth[1][0] : 0.0);
+	  zpos = z-DiskPosition[2]-(dim == 3 ? 0.5*CellWidth[2][0] : 0.0);
 
-      /* magnitude of z = r.L in L direction */
+	  /* Compute z and r_perp (AngularMomentum is angular momentum 
+	     and must have unit length). */    
 
-      zheight = AngularMomentum[0]*xpos + 
-                AngularMomentum[1]*ypos +
-                AngularMomentum[2]*zpos;
+	  /* magnitude of z = r.L in L direction */
 
-      /* position in plane of disk */
+	  zheight = AngularMomentum[0]*xpos + 
+	    AngularMomentum[1]*ypos +
+	    AngularMomentum[2]*zpos;
 
-      rp_hat[0] = xpos - zheight*AngularMomentum[0];
-      rp_hat[1] = ypos - zheight*AngularMomentum[1];
-      rp_hat[2] = zpos - zheight*AngularMomentum[2];
-      rcyl = sqrt(rp_hat[0]*rp_hat[0] + rp_hat[1]*rp_hat[1] + rp_hat[2]*rp_hat[2]);
+	  /* position in plane of disk */
 
-      /* Normalize the vector r_perp = unit vector pointing along plane of disk */
+	  rp_hat[0] = xpos - zheight*AngularMomentum[0];
+	  rp_hat[1] = ypos - zheight*AngularMomentum[1];
+	  rp_hat[2] = zpos - zheight*AngularMomentum[2];
+	  rcyl = sqrt(rp_hat[0]*rp_hat[0] + rp_hat[1]*rp_hat[1] + rp_hat[2]*rp_hat[2]);
 
-      rp_hat[0] = rp_hat[0]/rcyl;
-      rp_hat[1] = rp_hat[1]/rcyl;
-      rp_hat[2] = rp_hat[2]/rcyl;
+	  /* Normalize the vector r_perp = unit vector pointing along plane of disk */
+
+	  rp_hat[0] = rp_hat[0]/rcyl;
+	  rp_hat[1] = rp_hat[1]/rcyl;
+	  rp_hat[2] = rp_hat[2]/rcyl;
       
 
-      /* If requested, calculate velocity for CGM halo.
-       * Will be replaced wtih disk velocity later if appropriate */
-      if (UseHaloRotation){
-          /* polar angle as measured from the angular momentum vector*/
-          theta = acos(zheight/r_sph);
+	  /* If requested, calculate velocity for CGM halo.
+	   * Will be replaced wtih disk velocity later if appropriate */
+	  if (UseHaloRotation){
+	    /* polar angle as measured from the angular momentum vector*/
+	    theta = acos(zheight/r_sph);
 
-          halo_vmag = RotationScaleVelocity // code units
-                      * POW(r_sph/RotationScaleRadius, 
-                            RotationPowerLawIndex);
+	    halo_vmag = RotationScaleVelocity // code units
+	      * POW(r_sph/RotationScaleRadius, 
+		    RotationPowerLawIndex);
 
-	  if (r_sph <= RotationScaleRadius)
-	    halo_vmag = RotationScaleVelocity;
+	    if (r_sph <= RotationScaleRadius)
+	      halo_vmag = RotationScaleVelocity;
 
-	  halo_vmag *= sin(theta)*sin(theta);
+	    halo_vmag *= sin(theta)*sin(theta);
 	  
-        /* Cylindrical velocity */
-        Velocity[0] = halo_vmag * (AngularMomentum[1]*rp_hat[2] -
-                                   AngularMomentum[2]*rp_hat[1]);
-        Velocity[1] = halo_vmag * (AngularMomentum[2]*rp_hat[0] -
-                                   AngularMomentum[0]*rp_hat[2]);
-        Velocity[2] = halo_vmag * (AngularMomentum[0]*rp_hat[1] -
-                                   AngularMomentum[1]*rp_hat[0]);
-      }
+	    /* Cylindrical velocity */
+	    Velocity[0] = halo_vmag * (AngularMomentum[1]*rp_hat[2] -
+				       AngularMomentum[2]*rp_hat[1]);
+	    Velocity[1] = halo_vmag * (AngularMomentum[2]*rp_hat[0] -
+				       AngularMomentum[0]*rp_hat[2]);
+	    Velocity[2] = halo_vmag * (AngularMomentum[0]*rp_hat[1] -
+				       AngularMomentum[1]*rp_hat[0]);
+	  }
       
-      if (r_sph < DiskRadius) {
+	  if (r_sph < DiskRadius) {
 
-        /* Beyond truncation radius */
-        if( fabs(rcyl*LengthUnits/Mpc) > TruncRadius ){
-          disk_dens = 0.0;
-          break;
-        }
+	    /* Beyond truncation radius */
+	    if( fabs(rcyl*LengthUnits/Mpc) > TruncRadius ){
+	      disk_dens = 0.0;
+	      break;
+	    }
 
-        /* Find another vector perpendicular to r_perp and AngularMomentum */
+	    /* Find another vector perpendicular to r_perp and AngularMomentum */
 
-        yhat[0] = AngularMomentum[1]*rp_hat[2] - AngularMomentum[2]*rp_hat[1];
-        yhat[1] = AngularMomentum[2]*rp_hat[0] - AngularMomentum[0]*rp_hat[2];
-        yhat[2] = AngularMomentum[0]*rp_hat[1] - AngularMomentum[1]*rp_hat[0];
+	    yhat[0] = AngularMomentum[1]*rp_hat[2] - AngularMomentum[2]*rp_hat[1];
+	    yhat[1] = AngularMomentum[2]*rp_hat[0] - AngularMomentum[0]*rp_hat[2];
+	    yhat[2] = AngularMomentum[0]*rp_hat[1] - AngularMomentum[1]*rp_hat[0];
 
-        /* generate rotation matrix */
-        FLOAT inv[3][3],temp;
-        int i,j;
+	    /* generate rotation matrix */
+	    FLOAT inv[3][3],temp;
+	    int i,j;
 
-        // matrix of basis vectors in coordinate system defined by the galaxy
-        inv[0][0] = rp_hat[0];
-        inv[0][1] = yhat[0];
-        inv[0][2] = AngularMomentum[0];
+	    // matrix of basis vectors in coordinate system defined by the galaxy
+	    inv[0][0] = rp_hat[0];
+	    inv[0][1] = yhat[0];
+	    inv[0][2] = AngularMomentum[0];
         
-        inv[1][0] = rp_hat[1];
-        inv[1][1] = yhat[1];
-        inv[1][2] = AngularMomentum[1];
+	    inv[1][0] = rp_hat[1];
+	    inv[1][1] = yhat[1];
+	    inv[1][2] = AngularMomentum[1];
         
-        inv[2][0] = rp_hat[2];
-        inv[2][1] = yhat[2];
-        inv[2][2] = AngularMomentum[2];
+	    inv[2][0] = rp_hat[2];
+	    inv[2][1] = yhat[2];
+	    inv[2][2] = AngularMomentum[2];
 
-        // Matrix is orthogonal by construction so inverse = transpose
-        for (i=0;i<3;i++)
-          for (j=i+1;j<3;j++){
-            temp = inv[i][j];
-            inv[i][j] = inv[j][i];
-            inv[j][i] = temp;
-          }
+	    // Matrix is orthogonal by construction so inverse = transpose
+	    for (i=0;i<3;i++)
+	      for (j=i+1;j<3;j++){
+		temp = inv[i][j];
+		inv[i][j] = inv[j][i];
+		inv[j][i] = temp;
+	      }
 
-        DiskDensity = (GasMass * SolarMass
-                  / (8.0*pi*ScaleHeightz*Mpc*POW(ScaleHeightR*Mpc,2.0)))
-                  / DensityUnits;   //Code units (rho_0) 
+	    DiskDensity = (GasMass * SolarMass
+			   / (8.0*pi*ScaleHeightz*Mpc*POW(ScaleHeightR*Mpc,2.0)))
+	      / DensityUnits;   //Code units (rho_0) 
 
-        CellMass = gauss_mass(rcyl*LengthUnits, zheight*LengthUnits,
-                            xpos*LengthUnits, ypos*LengthUnits,
-                            zpos*LengthUnits, inv, 
-                            DiskDensity*DensityUnits,
-                            ScaleHeightR*Mpc, ScaleHeightz*Mpc, 
-                            CellWidth[0][0]*LengthUnits);
+	    CellMass = gauss_mass(rcyl*LengthUnits, zheight*LengthUnits,
+				  xpos*LengthUnits, ypos*LengthUnits,
+				  zpos*LengthUnits, inv, 
+				  DiskDensity*DensityUnits,
+				  ScaleHeightR*Mpc, ScaleHeightz*Mpc, 
+				  CellWidth[0][0]*LengthUnits);
 
-        disk_dens = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
+	    disk_dens = CellMass/POW(CellWidth[0][0]*LengthUnits,3)/DensityUnits;
 
-        if ((disk_dens > DiskDensityCap) && (DiskDensityCap > 0))
-            disk_dens = DiskDensityCap;
+	    if ((disk_dens > DiskDensityCap) && (DiskDensityCap > 0))
+	      disk_dens = DiskDensityCap;
 
-        /* Inside CGM */
-        if (disk_dens < density)
-          break;
+	    /* Inside CGM */
+	    if (disk_dens < density)
+	      break;
 
-        //
-        // calculate velocity
-        //
+	    //
+	    // calculate velocity
+	    //
 
-        if (PointSourceGravity > 0 )
-          DiskVelocityMag = gasvel(rcyl, DiskDensity, ExpansionFactor,
-                                  GalaxyMass, ScaleHeightR,
-                                  ScaleHeightz, DMConcentration, Time);
+	    if (PointSourceGravity > 0 )
+	      DiskVelocityMag = gasvel(rcyl, DiskDensity, ExpansionFactor,
+				       GalaxyMass, ScaleHeightR,
+				       ScaleHeightz, DMConcentration, Time);
 
-        else if( DiskGravity > 0 ) // me
-          DiskVelocityMag = DiskGravityCircularVelocity(r_sph*LengthUnits,
-                                                        rcyl*LengthUnits,
-                                                        zheight*LengthUnits)
-                            /VelocityUnits;
+	    else if( DiskGravity > 0 ) // me
+	      DiskVelocityMag = DiskGravityCircularVelocity(r_sph*LengthUnits,
+							    rcyl*LengthUnits,
+							    zheight*LengthUnits)
+		/VelocityUnits;
         
-        if (PointSourceGravity*DiskGravity != FALSE ) 
-          ENZO_FAIL("Cannot activate both PointSource and Disk gravity options for Isolated Galaxy");
+	    if (PointSourceGravity*DiskGravity != FALSE ) 
+	      ENZO_FAIL("Cannot activate both PointSource and Disk gravity options for Isolated Galaxy");
 
-        /* Compute velocty: L x r_perp. */
-        if (dim == 0 || dim == 1)
-          disk_vel[0] = DiskVelocityMag*(AngularMomentum[1]*rp_hat[2] -
-                                         AngularMomentum[2]*rp_hat[1]);
-        if (dim == 0 || dim == 2)
-          disk_vel[1] = DiskVelocityMag*(AngularMomentum[2]*rp_hat[0] -
-                                         AngularMomentum[0]*rp_hat[2]);
-        if (dim == 0 || dim == 3)
-          disk_vel[2] = DiskVelocityMag*(AngularMomentum[0]*rp_hat[1] -
-                                         AngularMomentum[1]*rp_hat[0]);
+	    /* Compute velocty: L x r_perp. */
+	    if (dim == 0 || dim == 1)
+	      disk_vel[0] = DiskVelocityMag*(AngularMomentum[1]*rp_hat[2] -
+					     AngularMomentum[2]*rp_hat[1]);
+	    if (dim == 0 || dim == 2)
+	      disk_vel[1] = DiskVelocityMag*(AngularMomentum[2]*rp_hat[0] -
+					     AngularMomentum[0]*rp_hat[2]);
+	    if (dim == 0 || dim == 3)
+	      disk_vel[2] = DiskVelocityMag*(AngularMomentum[0]*rp_hat[1] -
+					     AngularMomentum[1]*rp_hat[0]);
 
-      } // end: if (r_sph < DiskRadius)
+	  } // end: if (r_sph < DiskRadius)
 
-      /* Replace CGM ("Halo") defaults with disk if dense enough; i.e.
-       * replace 'density', 'temperature', 'initial_metallicity', and
-       * 'Velocity' (which are currently set to CGM values) with their
-       * appropriate disk values */
+	  /* Replace CGM ("Halo") defaults with disk if dense enough; i.e.
+	   * replace 'density', 'temperature', 'initial_metallicity', and
+	   * 'Velocity' (which are currently set to CGM values) with their
+	   * appropriate disk values */
        
-      if (disk_dens > density && fabs(rcyl*LengthUnits/Mpc) <= TruncRadius){
+	  if (disk_dens > density && fabs(rcyl*LengthUnits/Mpc) <= TruncRadius){
         
-        density = disk_dens;
-        temperature = DiskTemperature;
+	    density = disk_dens;
+	    temperature = DiskTemperature;
         
-        /* Here we're setting the disk to be X times more enriched -- DWS */
-        if( UseMetallicityField )
-          initial_metallicity *= GalaxySimulationDiskMetallicityEnhancementFactor;
+	    /* Here we're setting the disk to be X times more enriched -- DWS */
+	    if( UseMetallicityField )
+	      initial_metallicity *= GalaxySimulationDiskMetallicityEnhancementFactor;
           
-        /* Replace default/CGM velocity with disk velocity */
-        Velocity[0] = disk_vel[0];
-        Velocity[1] = disk_vel[1];
-        Velocity[2] = disk_vel[2];
-      }
+	    /* Replace default/CGM velocity with disk velocity */
+	    Velocity[0] = disk_vel[0];
+	    Velocity[1] = disk_vel[1];
+	    Velocity[2] = disk_vel[2];
+	  }
 
-    } // end: loop over dims 
+	} // end: loop over dims 
 
-    /* Set density. */
+	/* Set density. */
 
-    BaryonField[0][n] = density;
+	BaryonField[0][n] = density;
 
-    if (UseMetallicityField) {
-      BaryonField[MetalNum][n] = initial_metallicity 
-                                 * CoolData.SolarMetalFractionByMass 
-                                 * density;
-    }
+	if (UseMetallicityField) {
+	  BaryonField[MetalNum][n] = initial_metallicity 
+	    * CoolData.SolarMetalFractionByMass 
+	    * density;
+	}
 
-    /* This should probably be scaled with density in some way to be
-       a proper metallicity -- DWS (loop redundancy addressed by CEK) */
-    if (StarMakerTypeIaSNe)
-      BaryonField[MetalIaNum][n] = 1.0e-10;
+	/* This should probably be scaled with density in some way to be
+	   a proper metallicity -- DWS (loop redundancy addressed by CEK) */
+	if (StarMakerTypeIaSNe)
+	  BaryonField[MetalIaNum][n] = 1.0e-10;
    
-    for (dim = 0; dim < GridRank; dim++)
-      BaryonField[vel+dim][n] = Velocity[dim] + UniformVelocity[dim];
+	for (dim = 0; dim < GridRank; dim++)
+	  BaryonField[vel+dim][n] = Velocity[dim] + UniformVelocity[dim];
 
-    /* Set energy (thermal and then total if necessary). */
+	/* Set energy (thermal and then total if necessary). */
 
-    BaryonField[1][n] = temperature/TemperatureUnits / ((Gamma-1.0)*mu);
+	BaryonField[1][n] = temperature/TemperatureUnits / ((Gamma-1.0)*mu);
 
-    if (DualEnergyFormalism)
-      BaryonField[2][n] = BaryonField[1][n];
+	if (DualEnergyFormalism)
+	  BaryonField[2][n] = BaryonField[1][n];
 
-    if (HydroMethod != Zeus_Hydro)
-      for (dim = 0; dim < GridRank; dim++)
-        BaryonField[1][n] += 0.5*POW(BaryonField[vel+dim][n], 2);
+	if (HydroMethod != Zeus_Hydro)
+	  for (dim = 0; dim < GridRank; dim++)
+	    BaryonField[1][n] += 0.5*POW(BaryonField[vel+dim][n], 2);
 
-    if (BaryonField[1][n] <= 0.0)
-      printf("G_GSIC: negative or zero energy  n = %"ISYM"  temp = %"FSYM"   e = %"FSYM"\n",
-             n, temperature, BaryonField[1][n]);
+	if (BaryonField[1][n] <= 0.0)
+	  printf("G_GSIC: negative or zero energy  n = %"ISYM"  temp = %"FSYM"   e = %"FSYM"\n",
+		 n, temperature, BaryonField[1][n]);
 
-    if ( UseMHD ){
-      switch ( GalaxySimulationInitialBfieldTopology ){
-        case 0: //uniform
-          for (dim = 0; dim < GridRank; dim++) {
-            if( UseMHDCT ){
-              MagneticField[dim][n] = GalaxySimulationInitialBfield[dim];
-            }
-            BaryonField[B1Num+dim][n] = GalaxySimulationInitialBfield[dim];
-          }
-          break;
+	if ( UseMHD ){
+	  switch ( GalaxySimulationInitialBfieldTopology ){
+	  case 0: //uniform
+	    for (dim = 0; dim < GridRank; dim++) {
+	      if( UseMHDCT ){
+		MagneticField[dim][n] = GalaxySimulationInitialBfield[dim];
+	      }
+	      BaryonField[B1Num+dim][n] = GalaxySimulationInitialBfield[dim];
+	    }
+	    break;
           default:
-          ENZO_FAIL("undefined value of GalaxySimulationInitialBfieldTopology");
-      }
-      BaryonField[1][n] += 0.5*(BaryonField[B1Num][n]*BaryonField[B1Num][n]
-                               +BaryonField[B2Num][n]*BaryonField[B2Num][n]
-                               +BaryonField[B3Num][n]*BaryonField[B3Num][n])/
-                                BaryonField[0][n];
-    }//UseMHD
-    if( CRModel )
-      BaryonField[CRNum][n] = BaryonField[DensNum][n] * GalaxySimulationCR;
+	    ENZO_FAIL("undefined value of GalaxySimulationInitialBfieldTopology");
+	  }
+	  BaryonField[1][n] += 0.5*(BaryonField[B1Num][n]*BaryonField[B1Num][n]
+				    +BaryonField[B2Num][n]*BaryonField[B2Num][n]
+				    +BaryonField[B3Num][n]*BaryonField[B3Num][n])/
+	    BaryonField[0][n];
+	}//UseMHD
+	if( CRModel )
+	  BaryonField[CRNum][n] = BaryonField[DensNum][n] * GalaxySimulationCR;
 
-      // Set multispecies fields!
-      // this attempts to set them such that species conservation is maintained,
-      // using the method in CosmologySimulationInitializeGrid.C
-    if(MultiSpecies){
-      if (MultiSpecies == 3)
-	setup_chem(BaryonField[DensNum][n], temperature, EquilibrateChem,
-		   BaryonField[DeNum][n], BaryonField[HINum][n], BaryonField[HIINum][n],
-		   BaryonField[HeINum][n], BaryonField[HeIINum][n], BaryonField[HeIIINum][n],
-		   BaryonField[HMNum][n], BaryonField[H2INum][n], BaryonField[H2IINum][n],
-		   BaryonField[DINum][n], BaryonField[DIINum][n], BaryonField[HDINum][n]);
-      else if (MultiSpecies == 2) {
-	float temp;
-	setup_chem(BaryonField[DensNum][n], temperature, EquilibrateChem,
-		   BaryonField[DeNum][n], BaryonField[HINum][n], BaryonField[HIINum][n],
-		   BaryonField[HeINum][n], BaryonField[HeIINum][n], BaryonField[HeIIINum][n],
-		   BaryonField[HMNum][n], BaryonField[H2INum][n], BaryonField[H2IINum][n],
-		   temp, temp, temp);
-      }
-      else {
-	float temp;
-	setup_chem(BaryonField[DensNum][n], temperature, EquilibrateChem,
-		   BaryonField[DeNum][n], BaryonField[HINum][n], BaryonField[HIINum][n],
-		   BaryonField[HeINum][n], BaryonField[HeIINum][n], BaryonField[HeIIINum][n],
-		   temp, temp, temp,
-		   temp, temp, temp);
-      }
-    } // if(MultiSpecies)
+	// Set multispecies fields!
+	// this attempts to set them such that species conservation is maintained,
+	// using the method in CosmologySimulationInitializeGrid.C
+	if(MultiSpecies){
+	  if (MultiSpecies == 3)
+	    setup_chem(BaryonField[DensNum][n], temperature, EquilibrateChem,
+		       BaryonField[DeNum][n], BaryonField[HINum][n], BaryonField[HIINum][n],
+		       BaryonField[HeINum][n], BaryonField[HeIINum][n], BaryonField[HeIIINum][n],
+		       BaryonField[HMNum][n], BaryonField[H2INum][n], BaryonField[H2IINum][n],
+		       BaryonField[DINum][n], BaryonField[DIINum][n], BaryonField[HDINum][n]);
+	  else if (MultiSpecies == 2) {
+	    float temp;
+	    setup_chem(BaryonField[DensNum][n], temperature, EquilibrateChem,
+		       BaryonField[DeNum][n], BaryonField[HINum][n], BaryonField[HIINum][n],
+		       BaryonField[HeINum][n], BaryonField[HeIINum][n], BaryonField[HeIIINum][n],
+		       BaryonField[HMNum][n], BaryonField[H2INum][n], BaryonField[H2IINum][n],
+		       temp, temp, temp);
+	  }
+	  else {
+	    float temp;
+	    setup_chem(BaryonField[DensNum][n], temperature, EquilibrateChem,
+		       BaryonField[DeNum][n], BaryonField[HINum][n], BaryonField[HIINum][n],
+		       BaryonField[HeINum][n], BaryonField[HeIINum][n], BaryonField[HeIIINum][n],
+		       temp, temp, temp,
+		       temp, temp, temp);
+	  }
+	} // if(MultiSpecies)
 
-  } // end loop over grids
+      } // end loop over grids
 
-  halo_clean(CGM_data); // deletes halo-related arrays if needed (for circumgalactic medium)
- 
   return SUCCESS;
 
 } // end Grid::GalaxySimulationInitializeGrid
@@ -1127,7 +1169,9 @@ double bilinear_interp(double x, double y,
    GalaxySimulationGasHalo = 5  -- as #4, but the entropy distribution has a floor value, so S = S_f + S_0 (r/r_0)^alpha
    GalaxySimulationGasHalo = 6  -- as #4, but the entropy distribution follows that for a precipitation-regulated NFW halo
                                    in Voit 2019 (ApJ)
-   GalaxySimulationGasHalo = 7  -- a density and temperature profile fit to the entropy profiles in Voit 2019 (ApJ)     
+   GalaxySimulationGasHalo = 7  -- an extention to 6, and ONLY to be used internally; match the BC at Rvir from 6 and
+                                   continue to the edge of the domain with an isothermal profile in HSE in an NFW profile.
+   GalaxySimulationGasHalo = 8  -- a density and temperature profile fit to the entropy profiles in Voit 2019 (ApJ)     
 
    Inputs:  R - spherical radius, code units
 
@@ -1143,7 +1187,7 @@ double bilinear_interp(double x, double y,
    GalaxySimulationGasHaloCoreEntropy, units of keV cm^2
    GalaxySimulationGasHaloMetallicity, units of Zsun
 */
-float HaloGasDensity(FLOAT R, struct CGMdata CGM_data){
+float HaloGasDensity(FLOAT R, struct CGMdata& CGM_data){
 
   if(GalaxySimulationGasHalo < 1){
     /* "zero CGM" - sets a very low density */
@@ -1207,19 +1251,20 @@ float HaloGasDensity(FLOAT R, struct CGMdata CGM_data){
 
     return this_number_density*mu*mh;  // return physical density
     
-  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5 || GalaxySimulationGasHalo == 6){
+  } else if(GalaxySimulationGasHalo >= 4 && GalaxySimulationGasHalo <= 7){
     /* assumes entropy is a power-law function of radius OR a cored power-law function
        of radius and gas is in hydrostatic equilibrium w/the NFW halo.  */
 
-    double this_radius_cgs;
+    double this_radius_cgs, Rstart;
     int index;
+
     this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr+1.0e-3);  // index in array of CGM values
+    index = int(this_radius_cgs/CGM_data.dr + 1.0e-3+CGM_data.R_inner);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
     return CGM_data.n_rad[index]*mu*mh;  // return physical density
 
-  } else if(GalaxySimulationGasHalo == 7){
+  } else if(GalaxySimulationGasHalo == 8){
     /* Eqn 24 in the Appendix of Voit 2019; a fit to the theoretical density profile of a precipitation-regulated NFW halo.
        Equation gives the electron number density, but pull the same trick as methods 2 & 3 and assume n_e = n */
     double this_radius_kpc, this_number_density;
@@ -1248,7 +1293,7 @@ float HaloGasDensity(FLOAT R, struct CGMdata CGM_data){
    Returns:  Temperature, Kelvin
 */
 
-float HaloGasTemperature(FLOAT R, struct CGMdata CGM_data){
+float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
 
   if(GalaxySimulationGasHalo < 1){
     /* "zero CGM" - sets a very low temperature */
@@ -1271,18 +1316,18 @@ float HaloGasTemperature(FLOAT R, struct CGMdata CGM_data){
 
     return GalaxySimulationGasHaloTemperature;
 
-  } else if(GalaxySimulationGasHalo == 4 || GalaxySimulationGasHalo == 5 || GalaxySimulationGasHalo == 6){
+  } else if(GalaxySimulationGasHalo >= 4 && GalaxySimulationGasHalo <= 7){
     /* assumes entropy is a power-law function of radius and gas is in hydrostatic equilibrium */
 
     double this_radius_cgs;
     int index;
     this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr+1.0e-3);  // index in array of CGM values
+    index = int(this_radius_cgs/CGM_data.dr+1.0e-3+CGM_data.R_inner);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
     return CGM_data.T_rad[index];  // return temperature in Kelvin
 
-  } else if(GalaxySimulationGasHalo == 7){
+  } else if(GalaxySimulationGasHalo == 8){
     /* Theoretical temperature profile of a precipitation-regulated NFW halo, using fits to n(r) and S(r) */
     double this_radius_kpc, this_number_density, this_entropy;
     this_radius_kpc = R*LengthUnits/CM_PER_KPC;
@@ -1307,14 +1352,17 @@ float HaloGasTemperature(FLOAT R, struct CGMdata CGM_data){
    with arrays of size nbins for convenience (global within this file, at least).
    Rstop is the outer boundary of the integrtation in CGS; if negative, |Rstop|*R200 is used. 
    nbins defaults to 8192. */
-struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
+void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float Rstop, float nbins){
 
-  struct CGMdata CGM_data;
+  int halo_type=GalaxySimulationGasHalo;
+  if (GasHalo_override) // not 0
+    halo_type = GasHalo_override;
   
-  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return CGM_data;
+  if(halo_type < 4 || halo_type > 7) return;
 
   double k1, k2, k3, k4;
   double M, R200, rho_crit = 1.8788e-29*0.49;
+  double Rstart;
 
   int index;
   
@@ -1329,14 +1377,21 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
   M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
   
   R200 = pow(3.0/(4.0*3.14159)*M/(200.*rho_crit),1./3.);  // virial radius in CGS
-
+  
   if (Rstop < 0)
     Rstop = fabs(Rstop)*R200;
   CGM_data.R_outer = Rstop;// integrate out to the virial radius of halo
 
-  CGM_data.dr = CGM_data.R_outer / double(CGM_data.nbins);  // stepsize for RK4 integration and radial bins
+  if (halo_type == 7)
+    Rstart = R200;
+  else
+    Rstart = 0.0;
+
+  // stepsize for RK4 integration and radial bins
+  CGM_data.R_inner = Rstart;
+  CGM_data.dr = (CGM_data.R_outer - CGM_data.R_inner)/ double(CGM_data.nbins); 
   
-  if (GalaxySimulationGasHalo != 6){
+  if (halo_type < 6){
     double T0, n0, r0, dr;
     double this_n, this_radius, temperature;
     
@@ -1351,7 +1406,7 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
     this_radius = r0;
 
     // set the bin that we start at (otherwise it doesn't get set!)
-    index = int(this_radius/dr+1.0e-3);
+    index = int(this_radius/dr + 1.0e-3+CGM_data.R_inner);
     CGM_data.n_rad[index] = this_n;
     CGM_data.T_rad[index] = T0;
     CGM_data.rad[index] = this_radius;
@@ -1375,7 +1430,7 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
       temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
       
       // store everything in the struct
-      index = int(this_radius/dr+1.0e-3);    
+      index = int(this_radius/dr + 1.0e-3+CGM_data.R_inner);    
       CGM_data.n_rad[index] = this_n;
       CGM_data.T_rad[index] = temperature;
       CGM_data.rad[index] = this_radius;
@@ -1386,7 +1441,7 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
     this_radius = r0;
     dr *= -1.0;
     
-    while(this_radius > 0.0){
+    while(this_radius > CGM_data.R_inner){
       
       // calculate RK4 coefficients.
       k1 = halo_dn_dr(this_radius,          this_n);
@@ -1402,7 +1457,7 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
       temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
 
       // store everything in the struct
-      index = int(this_radius/(-1.0*dr)+1.0e-3);
+      index = int(this_radius/(-1.0*dr) + 1.0e-3+CGM_data.R_inner);
 
       if(index >= 0){
 	CGM_data.n_rad[index] = this_n;
@@ -1411,7 +1466,7 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
       }
     }
 
-  } else { // GalaxySimulationGasHalo == 6
+  } else if (halo_type == 6) { 
 
     /* Integrate pressure assuming HSE & S(r) from Voit 2019, then convert to n & T,
        instead of integrating n(r) directly as with methods 4 & 5. This makes the boundary
@@ -1431,13 +1486,13 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
 		     Gamma/(Gamma-1.));
 
     // set the bin that we start at (otherwise it doesn't get set!)
-    index = int(this_radius/(-1.0*dr)+1.0e-3); printf("%d\n", index);
+    index = int(this_radius/(-1.0*dr) + 1.0e-3+CGM_data.R_inner);
     CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma); // n_e ~ n_i
     CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     CGM_data.rad[index] = this_radius;
 
     // integrate inward from R200    
-    while(this_radius > 0.0){
+    while(this_radius > CGM_data.R_inner){
       
       // calculate RK4 coefficients.
       k1 = halo_dP_dr(this_radius,          this_press,             Grid);
@@ -1451,7 +1506,7 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
       this_ent = halo_S_of_r(this_radius, Grid); // entropy @ new radius
 
       // store density and temperature in the struct
-      index = int(this_radius/(-1.0*dr)+1.0e-3);
+      index = int(this_radius/(-1.0*dr) + 1.0e-3+CGM_data.R_inner);
       if (index >= 0){
 	CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
 	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
@@ -1471,7 +1526,7 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
 
     
     // Integrate outwards to R_outer
-    while(this_radius < CGM_data.R_outer){
+    while(this_radius <= CGM_data.R_outer){
 
       // calculate RK4 coefficients.
       k1 = halo_dP_dr(this_radius,          this_press,             Grid);
@@ -1485,14 +1540,64 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
       this_ent = halo_S_of_r(this_radius, Grid); // entropy @ new radius
 
       // store density and temperature in the struct
-      index = int(this_radius/dr+1.0e-3);
-      if (index < 8192) {
+      index = int(this_radius/dr + 1.0e-3+CGM_data.R_inner);
+      if (index < CGM_data.nbins) {
 	CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
 	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
 	CGM_data.rad[index] = this_radius;
       } else {
 	break; // Will not get R_outer into the array
       }
+    }
+
+  } else if (halo_type == 7) {
+
+    double dr, rmax, vcirc2_max, bound_ent;
+    double this_radius, this_press, const_temp;
+    double mu_ratio = 1.1/mu; // mu_e/mu
+    
+    dr = CGM_data.dr;
+    this_radius = CGM_data.R_inner;
+
+    // match boundary condition with halo_type = 6
+    bound_ent = halo_S_of_r(this_radius, Grid); // in erg*cm^2
+    rmax = 2.163*R200/GalaxySimulationDMConcentration;
+    vcirc2_max = GravConst * halo_mod_DMmass_at_r(rmax)/rmax;
+    this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(bound_ent, 1./Gamma),
+		     Gamma/(Gamma-1.));
+    const_temp = POW( POW(this_press/mu_ratio, Gamma-1.) * bound_ent, 1./Gamma) / kboltz;
+    
+    // set the bin that we start at (otherwise it doesn't get set!)
+    index = int(this_radius/(-1.0*dr) + CGM_data.R_inner+1.0e-3);
+    CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*bound_ent), 1./Gamma); // n_e ~ n_i
+    CGM_data.T_rad[index] = const_temp;
+    CGM_data.rad[index] = this_radius;
+
+    // the boundary is defined by pressure and entropy but the
+    // integration is defined by constant temperature and the pressure gradient
+    while(this_radius <= CGM_data.R_outer){
+    
+      // calculate RK4 coefficients.
+      k1 = halo_dP_dr(this_radius,          this_press,             const_temp);
+      k2 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k1, const_temp);
+      k3 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k2, const_temp);
+      k4 = halo_dP_dr(this_radius + dr,     this_press + dr*k3,     const_temp);
+
+      // update pressure and radius
+      this_press += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
+      this_radius += dr;  // new radius
+
+      // TODO extract density from P & T
+      
+      // store everything in the struct
+      index = int(this_radius/dr + CGM_data.R_inner+1.0e-3);    
+      if (index < CGM_data.nbins) {
+	CGM_data.n_rad[index] = this_press / (kboltz*const_temp);
+	CGM_data.T_rad[index] = const_temp;
+	CGM_data.rad[index] = this_radius;
+      }
+      else
+	break;
     }
   }
 
@@ -1501,19 +1606,6 @@ struct CGMdata halo_init(grid* Grid, float Rstop, float nbins){
   CGM_data.n_rad[0]=CGM_data.n_rad[1];
   CGM_data.T_rad[0]=CGM_data.T_rad[1];
   
-  return CGM_data;
-}
-
-/* If we declared these arrays, clean them up at the end of the problem initialization. 
-   Software campsite principle. */
-void halo_clean(struct CGMdata CGM_data){
-
-  if(GalaxySimulationGasHalo < 4 || GalaxySimulationGasHalo > 6) return;
-
-  delete [] CGM_data.n_rad;
-  delete [] CGM_data.T_rad;
-  delete [] CGM_data.rad;
-
   return;
 }
 
@@ -1646,6 +1738,10 @@ double halo_dn_dr(double r, double n){
   
   return -1.0*( n*1.22*mh*halo_g_of_r(r) + kboltz*POW(n,Gamma)*halo_dSdr(r,n) ) /
     ( Gamma * kboltz * halo_S_of_r(r) * POW(n, Gamma-1));
+}
+
+double halo_dP_dr(double r, double P, double T) {
+  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh * P/(kboltz*T);
 }
 
 double halo_dP_dr(double r, double P, grid* Grid) {
