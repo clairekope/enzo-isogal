@@ -132,7 +132,7 @@ double halo_S_of_r(double r);
 double halo_S_of_r(double r, grid* Grid);
 double halo_dSdr(double r, double n);
 double halo_dn_dr(double r, double n);
-double halo_dP_dr(double r, double P, double T);
+double halo_dn_dr(double r, double n, double T);
 double halo_dP_dr(double r, double P, grid* Grid);
 double halo_g_of_r(double r);
 double halo_mod_g_of_r(double r);
@@ -327,6 +327,9 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
   halo_init(CGM_data, this);
   printf("made primary halo\n");
 
+  // for (int i=0; i<CGM_data.nbins; ++i)
+  //   printf("%g %g %g\n", CGM_data.rad[i], CGM_data.n_rad[i], CGM_data.T_rad[i]);
+  
   if (GalaxySimulationGasHalo == 6) {
 
     double far_left, far_right, domain_width;
@@ -334,7 +337,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
     far_left = GridLeftEdge[0];
     far_right = GridRightEdge[0];
   
-    for (int i=1; i<GridRank; i++) {
+    for (int i=1; i<GridRank; ++i) {
       if (GridLeftEdge[i] < far_left)
 	far_left = GridLeftEdge[i];
       if (GridRightEdge[i] > far_right)
@@ -343,8 +346,11 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 
     domain_width = (far_right - far_left) * LengthUnits;
   
-    halo_init(outskirts, this, 7, domain_width/2, 4096);
+    halo_init(outskirts, this, 7, SQRT(2)*domain_width/2, 4096);
     printf("made secondary halo\n");
+
+    // for (int i=0; i<outskirts.nbins; ++i)
+    //   printf("%g %g %g\n", outskirts.rad[i], outskirts.n_rad[i], outskirts.T_rad[i]); 
   }
   
   /* compute size of fields */
@@ -406,9 +412,9 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	*/
 
 	density = HaloGasDensity(r_sph, CGM_data)/DensityUnits;
-	temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, CGM_data); // seg fault
+	temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, CGM_data);
 
-	if (GalaxySimulationGasHalo == 7 && r_sph*LengthUnits > outskirts.R_inner) {
+	if (GalaxySimulationGasHalo == 6 && r_sph*LengthUnits > outskirts.R_inner) {
 	  density = HaloGasDensity(r_sph, outskirts)/DensityUnits;
 	  temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, outskirts);
 	}
@@ -1259,7 +1265,7 @@ float HaloGasDensity(FLOAT R, struct CGMdata& CGM_data){
     int index;
 
     this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr + 1.0e-3+CGM_data.R_inner);  // index in array of CGM values
+    index = int((this_radius_cgs-CGM_data.R_inner)/CGM_data.dr + 1.0e-3);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
     return CGM_data.n_rad[index]*mu*mh;  // return physical density
@@ -1322,7 +1328,7 @@ float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
     double this_radius_cgs;
     int index;
     this_radius_cgs = R*LengthUnits;  // radius in CGS
-    index = int(this_radius_cgs/CGM_data.dr+1.0e-3+CGM_data.R_inner);  // index in array of CGM values
+    index = int((this_radius_cgs-CGM_data.R_inner)/CGM_data.dr+1.0e-3);  // index in array of CGM values
     if(index<0) index=0;  // check our indices
     if(index>=CGM_data.nbins) index=CGM_data.nbins-1;
     return CGM_data.T_rad[index];  // return temperature in Kelvin
@@ -1406,7 +1412,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
     this_radius = r0;
 
     // set the bin that we start at (otherwise it doesn't get set!)
-    index = int(this_radius/dr + 1.0e-3+CGM_data.R_inner);
+    index = int((this_radius - CGM_data.R_inner)/dr + 1.0e-3);
     CGM_data.n_rad[index] = this_n;
     CGM_data.T_rad[index] = T0;
     CGM_data.rad[index] = this_radius;
@@ -1430,7 +1436,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
       temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
       
       // store everything in the struct
-      index = int(this_radius/dr + 1.0e-3+CGM_data.R_inner);    
+      index = int((this_radius - CGM_data.R_inner)/dr + 1.0e-3);    
       CGM_data.n_rad[index] = this_n;
       CGM_data.T_rad[index] = temperature;
       CGM_data.rad[index] = this_radius;
@@ -1457,7 +1463,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
       temperature = halo_S_of_r(this_radius) * POW(this_n,Gamma-1.0);
 
       // store everything in the struct
-      index = int(this_radius/(-1.0*dr) + 1.0e-3+CGM_data.R_inner);
+      index = int((this_radius - CGM_data.R_inner)/(-1.0*dr) + 1.0e-3);
 
       if(index >= 0){
 	CGM_data.n_rad[index] = this_n;
@@ -1486,7 +1492,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
 		     Gamma/(Gamma-1.));
 
     // set the bin that we start at (otherwise it doesn't get set!)
-    index = int(this_radius/(-1.0*dr) + 1.0e-3+CGM_data.R_inner);
+    index = int((this_radius - CGM_data.R_inner)/(-1.0*dr) + 1.0e-3);
     CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma); // n_e ~ n_i
     CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     CGM_data.rad[index] = this_radius;
@@ -1506,7 +1512,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
       this_ent = halo_S_of_r(this_radius, Grid); // entropy @ new radius
 
       // store density and temperature in the struct
-      index = int(this_radius/(-1.0*dr) + 1.0e-3+CGM_data.R_inner);
+      index = int((this_radius - CGM_data.R_inner)/(-1.0*dr) + 1.0e-3);
       if (index >= 0){
 	CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
 	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
@@ -1540,7 +1546,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
       this_ent = halo_S_of_r(this_radius, Grid); // entropy @ new radius
 
       // store density and temperature in the struct
-      index = int(this_radius/dr + 1.0e-3+CGM_data.R_inner);
+      index = int(this_radius/dr + 1.0e-3);
       if (index < CGM_data.nbins) {
 	CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
 	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
@@ -1552,8 +1558,8 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
 
   } else if (halo_type == 7) {
 
-    double dr, rmax, vcirc2_max, bound_ent;
-    double this_radius, this_press, const_temp;
+    double dr, rmax, vcirc2_max, bound_press, bound_ent;
+    double this_radius, this_dens, const_temp;
     double mu_ratio = 1.1/mu; // mu_e/mu
     
     dr = CGM_data.dr;
@@ -1561,15 +1567,18 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
 
     // match boundary condition with halo_type = 6
     bound_ent = halo_S_of_r(this_radius, Grid); // in erg*cm^2
+
     rmax = 2.163*R200/GalaxySimulationDMConcentration;
     vcirc2_max = GravConst * halo_mod_DMmass_at_r(rmax)/rmax;
-    this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(bound_ent, 1./Gamma),
+    bound_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(bound_ent, 1./Gamma),
 		     Gamma/(Gamma-1.));
-    const_temp = POW( POW(this_press/mu_ratio, Gamma-1.) * bound_ent, 1./Gamma) / kboltz;
+
+    this_dens = 2 * POW(bound_press/(mu_ratio*bound_ent), 1./Gamma); // n_e ~ n_i
+    const_temp = POW( POW(bound_press/mu_ratio, Gamma-1.) * bound_ent, 1./Gamma) / kboltz;
     
     // set the bin that we start at (otherwise it doesn't get set!)
-    index = int(this_radius/(-1.0*dr) + CGM_data.R_inner+1.0e-3);
-    CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*bound_ent), 1./Gamma); // n_e ~ n_i
+    index = int((this_radius - CGM_data.R_inner)/(dr) + 1.0e-3);
+    CGM_data.n_rad[index] = this_dens;
     CGM_data.T_rad[index] = const_temp;
     CGM_data.rad[index] = this_radius;
 
@@ -1578,21 +1587,19 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
     while(this_radius <= CGM_data.R_outer){
     
       // calculate RK4 coefficients.
-      k1 = halo_dP_dr(this_radius,          this_press,             const_temp);
-      k2 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k1, const_temp);
-      k3 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k2, const_temp);
-      k4 = halo_dP_dr(this_radius + dr,     this_press + dr*k3,     const_temp);
+      k1 = halo_dn_dr(this_radius,          this_dens,             const_temp);
+      k2 = halo_dn_dr(this_radius + 0.5*dr, this_dens + 0.5*dr*k1, const_temp);
+      k3 = halo_dn_dr(this_radius + 0.5*dr, this_dens + 0.5*dr*k2, const_temp);
+      k4 = halo_dn_dr(this_radius + dr,     this_dens + dr*k3,     const_temp);
 
       // update pressure and radius
-      this_press += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
+      this_dens += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
       this_radius += dr;  // new radius
 
-      // TODO extract density from P & T
-      
       // store everything in the struct
-      index = int(this_radius/dr + CGM_data.R_inner+1.0e-3);    
+      index = int((this_radius - CGM_data.R_inner)/dr + 1.0e-3);    
       if (index < CGM_data.nbins) {
-	CGM_data.n_rad[index] = this_press / (kboltz*const_temp);
+	CGM_data.n_rad[index] = this_dens;
 	CGM_data.T_rad[index] = const_temp;
 	CGM_data.rad[index] = this_radius;
       }
@@ -1601,10 +1608,12 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
     }
   }
 
-  // this integration acts a little squirrelly around r=0 because the mass values are garbage.  Cheap fix.
-  CGM_data.rad[0]=CGM_data.rad[1];
-  CGM_data.n_rad[0]=CGM_data.n_rad[1];
-  CGM_data.T_rad[0]=CGM_data.T_rad[1];
+  if (CGM_data.R_inner == 0) {
+    // this integration acts a little squirrelly around r=0 because the mass values are garbage.  Cheap fix.
+    CGM_data.rad[0]=CGM_data.rad[1];
+    CGM_data.n_rad[0]=CGM_data.n_rad[1];
+    CGM_data.T_rad[0]=CGM_data.T_rad[1];
+  }
   
   return;
 }
@@ -1740,13 +1749,13 @@ double halo_dn_dr(double r, double n){
     ( Gamma * kboltz * halo_S_of_r(r) * POW(n, Gamma-1));
 }
 
-double halo_dP_dr(double r, double P, double T) {
-  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh * P/(kboltz*T);
+double halo_dn_dr(double r, double n, double T) {
+  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh*n / (kboltz*T);
 }
 
 double halo_dP_dr(double r, double P, grid* Grid) {
-  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh*POW( P/(1.1/mu) / halo_S_of_r(r,Grid),
-						  1./Gamma);
+  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh * POW( P/(1.1/mu) / halo_S_of_r(r,Grid),
+						    1./Gamma);
 }
 
 /* halo gravitational acceleration as a function of radius.
