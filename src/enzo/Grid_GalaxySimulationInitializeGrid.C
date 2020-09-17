@@ -345,8 +345,9 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
     }
 
     domain_width = (far_right - far_left) * LengthUnits;
-  
-    halo_init(outskirts, this, 7, SQRT(2)*domain_width/2, 4096);
+
+    // being clever failed me so just use the domain width for now I guess
+    halo_init(outskirts, this, 7, domain_width, 4096);
     printf("made secondary halo\n");
 
     // for (int i=0; i<outskirts.nbins; ++i)
@@ -1582,6 +1583,24 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
     CGM_data.T_rad[index] = const_temp;
     CGM_data.rad[index] = this_radius;
 
+    // blend old dP/dr as k1 for the first step
+    k1 = halo_dP_dr(this_radius, bound_press, Grid) / (kboltz*const_temp);
+    k2 = halo_dn_dr(this_radius + 0.5*dr, this_dens + 0.5*dr*k1, const_temp);
+    k3 = halo_dn_dr(this_radius + 0.5*dr, this_dens + 0.5*dr*k2, const_temp);
+    k4 = halo_dn_dr(this_radius + dr,     this_dens + dr*k3,     const_temp);
+
+    // update density and radius
+    this_dens += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
+    this_radius += dr;  // new radius
+    
+    // store everything in the struct
+    index = int((this_radius - CGM_data.R_inner)/dr + 1.0e-3);    
+
+    CGM_data.n_rad[index] = this_dens;
+    CGM_data.T_rad[index] = const_temp;
+    CGM_data.rad[index] = this_radius;
+    
+    
     // the boundary is defined by pressure and entropy but the
     // integration is defined by constant temperature and the pressure gradient
     while(this_radius <= CGM_data.R_outer){
@@ -1592,7 +1611,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
       k3 = halo_dn_dr(this_radius + 0.5*dr, this_dens + 0.5*dr*k2, const_temp);
       k4 = halo_dn_dr(this_radius + dr,     this_dens + dr*k3,     const_temp);
 
-      // update pressure and radius
+      // update density and radius
       this_dens += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
       this_radius += dr;  // new radius
 
