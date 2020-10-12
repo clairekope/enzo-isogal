@@ -81,19 +81,24 @@ struct CGMdata {
   int nbins;
   double R_inner, R_outer, dr;
 
-  CGMdata() {
-    n_rad = nullptr;
-    T_rad = nullptr;
-    rad = nullptr;
+  CGMdata(int n_bins) {
+    
+    nbins = n_bins;
+  
+    n_rad = new double[nbins];
+    T_rad = new double[nbins];
+    rad   = new double[nbins];
+
+    for(int i=0; i<nbins; i++) n_rad[i] = T_rad[i] = rad[i] = -1.0;
   }
   
   ~CGMdata() {
     if (n_rad) delete[] n_rad;
     if (T_rad) delete[] T_rad;
     if (rad) delete[] rad;
-    n_rad = nullptr;
-    T_rad = nullptr;
-    rad = nullptr;
+    // n_rad = nullptr;
+    // T_rad = nullptr;
+    // rad = nullptr;
   }
 };
 
@@ -137,7 +142,7 @@ double halo_dP_dr(double r, double P, grid* Grid);
 double halo_g_of_r(double r);
 double halo_mod_g_of_r(double r);
 double halo_mod_DMmass_at_r(double r);
-void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override=0, float Rstop=-1, float nbins=8192);
+void halo_init(struct CGMdata& CGM_data, grid* Grid, float Rstop=-1, int GasHalo_override=0);
 
 
 int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
@@ -323,36 +328,27 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
       for circumgalactic medium if needed (i.e., for CGM profiles that
       require integration to get quantities we care about. 
       Assumes disk is located at the center of the domain. */
-  struct CGMdata CGM_data, outskirts;
-  halo_init(CGM_data, this);
-  printf("made primary halo\n");
+
+  double far_left, far_right, largest_rad;
+  
+  far_left = DomainLeftEdge[0];
+  far_right = DomainRightEdge[0];
+  
+  for (int i=1; i<GridRank; ++i) {
+    if (DomainLeftEdge[i] < far_left)
+      far_left = DomainLeftEdge[i];
+    if (DomainRightEdge[i] > far_right)
+      far_right = DomainRightEdge[i];
+  }
+
+  largest_rad = sqrt(3) * (far_right - far_left) / 2.0 * LengthUnits;
+
+  struct CGMdata CGM_data(8192);
+  halo_init(CGM_data, this, largest_rad);
+  printf("Made halo profile\n");
 
   // for (int i=0; i<CGM_data.nbins; ++i)
   //   printf("%g %g %g\n", CGM_data.rad[i], CGM_data.n_rad[i], CGM_data.T_rad[i]);
-  
-  if (GalaxySimulationGasHalo == 6) {
-
-    double far_left, far_right, domain_width;
-
-    far_left = GridLeftEdge[0];
-    far_right = GridRightEdge[0];
-  
-    for (int i=1; i<GridRank; ++i) {
-      if (GridLeftEdge[i] < far_left)
-	far_left = GridLeftEdge[i];
-      if (GridRightEdge[i] > far_right)
-	far_right = GridRightEdge[i];
-    }
-
-    domain_width = (far_right - far_left) * LengthUnits;
-
-    // being clever failed me so just use the domain width for now I guess
-    halo_init(outskirts, this, 7, domain_width, 4096);
-    printf("made secondary halo\n");
-
-    // for (int i=0; i<outskirts.nbins; ++i)
-    //   printf("%g %g %g\n", outskirts.rad[i], outskirts.n_rad[i], outskirts.T_rad[i]); 
-  }
   
   /* compute size of fields */
   size = 1;
@@ -415,11 +411,14 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	density = HaloGasDensity(r_sph, CGM_data)/DensityUnits;
 	temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, CGM_data);
 
+	// This didn't work as planned
+	/*
 	if (GalaxySimulationGasHalo == 6 && r_sph*LengthUnits > outskirts.R_inner) {
 	  density = HaloGasDensity(r_sph, outskirts)/DensityUnits;
 	  temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, outskirts);
 	}
-
+	*/
+	
 	FLOAT xpos, ypos, zpos, rsph, zheight, rcyl, theta; 
 	float CellMass;
 	FLOAT rp_hat[3];
@@ -676,7 +675,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 		       temp, temp, temp);
 	  }
 	} // if(MultiSpecies)
-
+	
       } // end loop over grids
 
   return SUCCESS;
@@ -1359,7 +1358,7 @@ float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
    with arrays of size nbins for convenience (global within this file, at least).
    Rstop is the outer boundary of the integrtation in CGS; if negative, |Rstop|*R200 is used. 
    nbins defaults to 8192. */
-void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float Rstop, float nbins){
+ void halo_init(struct CGMdata& CGM_data, grid* Grid, float Rstop, int GasHalo_override){
 
   int halo_type=GalaxySimulationGasHalo;
   if (GasHalo_override) // not 0
@@ -1372,14 +1371,6 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
   double Rstart;
 
   int index;
-  
-  CGM_data.nbins = nbins;
-  
-  CGM_data.n_rad = new double[CGM_data.nbins];
-  CGM_data.T_rad = new double[CGM_data.nbins];
-  CGM_data.rad   = new double[CGM_data.nbins];
-
-  for(int i=0;i<CGM_data.nbins;i++) CGM_data.n_rad[i]=CGM_data.T_rad[i]=CGM_data.rad[i]=-1.0;
   
   M = GalaxySimulationGalaxyMass * SolarMass;  // halo total mass in CGS
   
@@ -1545,7 +1536,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
       this_radius += dr;  // new radius
       this_press += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4); // P @ new radius
       this_ent = halo_S_of_r(this_radius, Grid); // entropy @ new radius
-
+      
       // store density and temperature in the struct
       index = int(this_radius/dr + 1.0e-3);
       if (index < CGM_data.nbins) {
@@ -1556,8 +1547,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
 	break; // Will not get R_outer into the array
       }
     }
-
-  } else if (halo_type == 7) {
+  } /*else if (halo_type == 7) {
 
     double dr, rmax, vcirc2_max, bound_press, bound_ent;
     double this_radius, this_dens, const_temp;
@@ -1626,7 +1616,7 @@ void halo_init(struct CGMdata& CGM_data, grid* Grid, int GasHalo_override, float
 	break;
     }
   }
-
+    */
   if (CGM_data.R_inner == 0) {
     // this integration acts a little squirrelly around r=0 because the mass values are garbage.  Cheap fix.
     CGM_data.rad[0]=CGM_data.rad[1];
@@ -1672,7 +1662,7 @@ double halo_S_of_r(double r){
 double halo_S_of_r(double r, grid* Grid){
   if (GalaxySimulationGasHalo == 6){
 
-    double M, C, r_vir, r_max, rho_crit = 1.8788e-29*0.49; ;
+    double M, C, r_vir, r_max, rho_crit = 1.8788e-29*0.49;
     double vcirc2, vcirc2_max;
     double Tgrav, Tgrav_therm;
     
@@ -1720,8 +1710,9 @@ double halo_S_of_r(double r, grid* Grid){
     double S_precip = POW(2*mu*mh, 1./3.) * POW(r*Lambda*GalaxySimulationGasHaloRatio/3.0, 2./3.);
     double S_nfw = 39. * vcirc2_max/1e10/4e4 * POW(r/r_vir, 1.1) / KEV_PER_ERG; // See Voit 19 Eqn 10 for assumptions
 
+    // TODO blend with an entropy cap
+    
     return (S_nfw + S_precip);
-    //return 2.6*POW(r/CM_PER_KPC, 0.71) / KEV_PER_ERG;
     
   } else {
     ENZO_FAIL("halo_S_of_r: GalaxySimulationGasHalo set incorrectly.");
