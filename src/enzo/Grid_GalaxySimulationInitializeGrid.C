@@ -78,7 +78,7 @@ float NFWDarkMatterMassEnclosed(FLOAT R);
    if we need to generate radial profiles of halo quantities via 
    numerical integration */
 struct CGMdata {
-  double *n_rad, *T_rad, *rad;
+  double *n_rad, *T_rad, *rad, *press;
   int nbins;
   double R_inner, R_outer, dr;
 
@@ -97,9 +97,6 @@ struct CGMdata {
     if (n_rad) delete[] n_rad;
     if (T_rad) delete[] T_rad;
     if (rad) delete[] rad;
-    // n_rad = nullptr;
-    // T_rad = nullptr;
-    // rad = nullptr;
   }
 };
 
@@ -139,7 +136,6 @@ double halo_S_of_r(double r);
 double halo_S_of_r(double r, grid* Grid);
 double halo_dSdr(double r, double n);
 double halo_dn_dr(double r, double n);
-double halo_dn_dr(double r, double n, double T);
 double halo_dP_dr(double r, double P, grid* Grid);
 double sigmoid_halo_dP_dr(double r, double P, double log_r0,
 			  double k, double y0, double y_off);
@@ -352,7 +348,7 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
   printf("Made halo profile\n");
 
   // for (int i=0; i<CGM_data.nbins; ++i)
-  //   printf("%g %g %g\n", CGM_data.rad[i], CGM_data.n_rad[i], CGM_data.T_rad[i]);
+  //   printf("%g %g %g %g\n", CGM_data.rad[i], CGM_data.n_rad[i], CGM_data.T_rad[i], CGM_data.press[i]);
   
   /* compute size of fields */
   size = 1;
@@ -414,14 +410,6 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 
 	density = HaloGasDensity(r_sph, CGM_data)/DensityUnits;
 	temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, CGM_data);
-
-	// This didn't work as planned
-	/*
-	if (GalaxySimulationGasHalo == 6 && r_sph*LengthUnits > outskirts.R_inner) {
-	  density = HaloGasDensity(r_sph, outskirts)/DensityUnits;
-	  temperature = disk_temp = init_temp = HaloGasTemperature(r_sph, outskirts);
-	}
-	*/
 	
 	FLOAT xpos, ypos, zpos, rsph, zheight, rcyl, theta; 
 	float CellMass;
@@ -485,7 +473,8 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	    Velocity[2] = halo_vmag * (AngularMomentum[0]*rp_hat[1] -
 				       AngularMomentum[1]*rp_hat[0]);
 	  }
-      
+
+	  disk_dens = 0.0;
 	  if (r_sph < DiskRadius) {
 
 	    /* Beyond truncation radius */
@@ -1179,8 +1168,7 @@ double bilinear_interp(double x, double y,
    GalaxySimulationGasHalo = 5  -- as #4, but the entropy distribution has a floor value, so S = S_f + S_0 (r/r_0)^alpha
    GalaxySimulationGasHalo = 6  -- as #4, but the entropy distribution follows that for a precipitation-regulated NFW halo
                                    in Voit 2019 (ApJ)
-   GalaxySimulationGasHalo = 7  -- an extention to 6, and ONLY to be used internally; match the BC at Rvir from 6 and
-                                   continue to the edge of the domain with an isothermal profile in HSE in an NFW profile.
+   GalaxySimulationGasHalo = 7  -- previously reserved
    GalaxySimulationGasHalo = 8  -- a density and temperature profile fit to the entropy profiles in Voit 2019 (ApJ)     
 
    Inputs:  R - spherical radius, code units
@@ -1474,7 +1462,7 @@ float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
     double this_press, this_ent, this_radius;//, this_n;
     double mu_ratio = 1.1/mu; // mu_e/mu
     double T_floor = 4e4; // IGM
-    
+
     // boundary condition & quantities for integration
     dr = -1.0*CGM_data.dr;
     this_radius = R200;
@@ -1524,40 +1512,14 @@ float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
     this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
 		     Gamma/(Gamma-1.));
 
-    /*    
-    // Integrate outwards to R_outer
-    while(this_radius <= CGM_data.R_outer and CGM_data.T_rad[index] > 0.8*T_floor){
-
-      // calculate RK4 coefficients.
-      k1 = halo_dP_dr(this_radius,          this_press,             Grid);
-      k2 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k1, Grid);
-      k3 = halo_dP_dr(this_radius + 0.5*dr, this_press + 0.5*dr*k2, Grid);
-      k4 = halo_dP_dr(this_radius + dr,     this_press + dr*k3,     Grid);
-      
-      // update radius, pressure, entropy
-      this_radius += dr;  // new radius
-      this_press += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4); // P @ new radius
-      this_ent = halo_S_of_r(this_radius, Grid);
-      
-      // store density and temperature in the struct
-      index = int(this_radius/dr + 1.0e-3);
-      if (index < CGM_data.nbins) {
-	CGM_data.n_rad[index] = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
-	CGM_data.T_rad[index] = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
-	CGM_data.rad[index] = this_radius;
-      } else {
-	break; // Will not get R_outer into the array
-      }
-    }
-    */
-
+    // Construct sigmoid for temperature outside Rvir
     double this_temp, this_dens;
     double deriv, r0, y0, y_offset, k;
 
-    this_dens = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
-
-    this_temp = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
     index = int((this_radius - CGM_data.R_inner)/(1.0*dr) + 1.0e-3);
+    this_dens = 2 * POW(this_press/(mu_ratio*this_ent), 1./Gamma);
+    this_temp = POW( POW(this_press/mu_ratio, Gamma-1.) * this_ent, 1./Gamma) / kboltz;
+
     deriv = (log10(this_temp) - log10(CGM_data.T_rad[index-1]))
           / (log10(this_radius) - log10(this_radius-dr));
 
@@ -1566,19 +1528,25 @@ float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
     assert (y0 < 0.0);
     y_offset = log10(this_temp) - y0/2.0;
     k = fabs(4.0/y0 * deriv);
-     
+
+    // Set constant d^2P/dr^2
+    double prev_press, dlP_dlr, this_dPdr, press_vir;
+    prev_press = mu_ratio * CGM_data.n_rad[index-1]/2.0 * kboltz*CGM_data.T_rad[index-1];
+    press_vir = this_press;
+    
+    dlP_dlr = (log10(this_press) - log10(prev_press))
+            / (log10(this_radius) - log10(this_radius-dr));
+    assert (dlP_dlr < 0.0);
+    
     while(this_radius <= CGM_data.R_outer){
-      
-      // calculate RK4 coefficients.
-      k1 = halo_dn_dr(this_radius,          this_dens,             this_temp);
-      k2 = halo_dn_dr(this_radius + 0.5*dr, this_dens + 0.5*dr*k1, this_temp);
-      k3 = halo_dn_dr(this_radius + 0.5*dr, this_dens + 0.5*dr*k2, this_temp);
-      k4 = halo_dn_dr(this_radius + dr,     this_dens + dr*k3,     this_temp);
+
+      this_dPdr = this_press/this_radius * dlP_dlr;
 
       // update density and radius
-      this_dens += (1.0/6.0) * dr * (k1 + 2.0*k2 + 2.0*k3 + k4);
       this_radius += dr;  // new radius
+      this_dens = -2.0 * this_dPdr/(1.22*mh*halo_mod_g_of_r(this_radius)); // n_e = n_i
       this_temp = POW(10, sigmoid(log10(this_radius), r0, k, y0, y_offset));
+      this_press = POW(10, dlP_dlr*log10(this_radius/R200) + log10(press_vir));
 
       // store everything in the struct
       index = int((this_radius - CGM_data.R_inner)/dr + 1.0e-3);    
@@ -1739,9 +1707,9 @@ double halo_dn_dr(double r, double n){
     ( Gamma * kboltz * halo_S_of_r(r) * POW(n, Gamma-1));
 }
 
-double halo_dn_dr(double r, double n, double T) {
-  return -1.0 * halo_mod_g_of_r(r) * 1.22*mh*n / (kboltz*T);
-}
+// double halo_dn_dr(double r, double n, double T) {
+//   return -1.0 *  * 1.22*mh*n / (kboltz*T);
+// }
 
 double halo_dP_dr(double r, double P, grid* Grid) {
   return -1.0 * halo_mod_g_of_r(r) * 1.22*mh * POW( P/(1.1/mu) / halo_S_of_r(r,Grid),
