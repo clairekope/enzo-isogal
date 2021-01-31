@@ -61,12 +61,12 @@ int SetStellarFeedbackEfficiency(FLOAT time)
      || StarFeedbackThermalEfficiencyRamp == 5){  // interpolation in time
 
     /* Set early and late efficiencies in linear or log */
-    if(StarFeedbackThermalEfficiencyRamp == 1){ // mass evolution linear in time
-      early_fbeff = StarFeedbackThermalEfficiencyRampStartValue;
-      late_fbeff = StarFeedbackThermalEfficiencyRampEndValue;
-    } else { // mass evolution exponential in time
+    if(StarFeedbackThermalEfficiencyRamp == 3){ // mass evolution exponential in time
       early_fbeff = log10(StarFeedbackThermalEfficiencyRampStartValue);
       late_fbeff = log10(StarFeedbackThermalEfficiencyRampEndValue);
+    } else { 
+      early_fbeff = StarFeedbackThermalEfficiencyRampStartValue;
+      late_fbeff = StarFeedbackThermalEfficiencyRampEndValue;
     }
 
     /* set current stellar feedback efficiency */
