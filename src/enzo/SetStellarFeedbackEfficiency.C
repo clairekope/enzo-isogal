@@ -61,12 +61,12 @@ int SetStellarFeedbackEfficiency(FLOAT time)
      || StarFeedbackThermalEfficiencyRamp == 5){  // interpolation in time
 
     /* Set early and late efficiencies in linear or log */
-    if(StarFeedbackThermalEfficiencyRamp == 3){ // mass evolution exponential in time
-      early_fbeff = log10(StarFeedbackThermalEfficiencyRampStartValue);
-      late_fbeff = log10(StarFeedbackThermalEfficiencyRampEndValue);
-    } else { 
+    if(StarFeedbackThermalEfficiencyRamp == 1){
       early_fbeff = StarFeedbackThermalEfficiencyRampStartValue;
       late_fbeff = StarFeedbackThermalEfficiencyRampEndValue;
+    } else { 
+      early_fbeff = log10(StarFeedbackThermalEfficiencyRampStartValue);
+      late_fbeff = log10(StarFeedbackThermalEfficiencyRampEndValue);
     }
 
     /* set current stellar feedback efficiency */
@@ -85,10 +85,10 @@ int SetStellarFeedbackEfficiency(FLOAT time)
     }
 
     /* set StarEnergyToThermalFeedback correctly */
-    if(StarFeedbackThermalEfficiencyRamp == 3){
-      StarEnergyToThermalFeedback = POW(10.0,current_fbeff);
-    } else {
+    if(StarFeedbackThermalEfficiencyRamp == 1){
       StarEnergyToThermalFeedback = current_fbeff;
+    } else {
+      StarEnergyToThermalFeedback = POW(10.0,current_fbeff);
     }
 
   } else if(StarFeedbackThermalEfficiencyRamp == 2 || StarFeedbackThermalEfficiencyRamp == 4){  // interpolation in redshift
