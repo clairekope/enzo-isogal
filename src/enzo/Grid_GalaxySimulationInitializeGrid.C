@@ -1512,7 +1512,7 @@ float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
     this_press = mu_ratio*POW(0.25*mu*mh*vcirc2_max/POW(this_ent, 1./Gamma),
 		     Gamma/(Gamma-1.));
 
-    // Construct sigmoid for temperature outside Rvir
+    // Construct sigmoid to transition temperature to a constant
     double this_temp, this_dens;
     double deriv, r0, y0, y_offset, k;
 
@@ -1529,7 +1529,7 @@ float HaloGasTemperature(FLOAT R, struct CGMdata& CGM_data){
     y_offset = log10(this_temp) - y0/2.0;
     k = fabs(4.0/y0 * deriv);
 
-    // Set constant d^2P/dr^2
+    // Set constant dlog(P)/dlog(r)
     double prev_press, dlP_dlr, this_dPdr, press_vir;
     prev_press = mu_ratio * CGM_data.n_rad[index-1]/2.0 * kboltz*CGM_data.T_rad[index-1];
     press_vir = this_press;
