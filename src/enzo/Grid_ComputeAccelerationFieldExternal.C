@@ -421,13 +421,16 @@ int grid::ComputeAccelerationFieldExternal()
 
             /* magnitude of z = r.L in L direction */
 
-            zheight=AngularMomentumx*xpos + AngularMomentumy*ypos + AngularMomentumz*zpos;
+            zheight = AngularMomentumx*xpos + AngularMomentumy*ypos + AngularMomentumz*zpos;
 
-            /* position in plane of disk */
+            /* position in plane of disk in code units */
 
             xdisk=xpos-zheight*AngularMomentumx;
             ydisk=ypos-zheight*AngularMomentumy;
             zdisk=zpos-zheight*AngularMomentumz;
+
+            // Put zheight into cgs for easier calculation of acceleration
+            zheight *= LengthUnits;
 
             radius = sqrt(rsquared) * LengthUnits;
             rcyl = sqrt(xdisk*xdisk + ydisk*ydisk + zdisk*zdisk) * LengthUnits;
@@ -436,15 +439,15 @@ int grid::ComputeAccelerationFieldExternal()
                         *(log((Rs+radius)/Rs) - radius/(Rs+radius));
             accelsph += (GravConst)*MBulge/POW(radius+rBulge,2);
 
-            accelcylR = GravConst*MSDisk*rcyl/sqrt(POW(POW(rcyl,2)
-                      + POW(SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
+            accelcylR = GravConst*MSDisk*rcyl/sqrt(POW(POW(rcyl,2) // was rcyl converted to cgs? Yes; line 433
+                      + POW(SDiskScaleHeightR+sqrt(POW(zheight,2) // are xpos etc already converted?
                       + POW(SDiskScaleHeightz,2)),2),3));
 
-            accelcylz = GravConst*MSDisk/sqrt(POW(zheight*LengthUnits,2)
-                      + POW(SDiskScaleHeightz,2))*zheight*LengthUnits/sqrt(POW(POW(rcyl,2)
-                      + POW(SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
+            accelcylz = GravConst*MSDisk/sqrt(POW(zheight,2)
+                      + POW(SDiskScaleHeightz,2))*zheight/sqrt(POW(POW(rcyl,2)
+                      + POW(SDiskScaleHeightR+sqrt(POW(zheight,2)
                       + POW(SDiskScaleHeightz,2)),2),3))
-                        *(  SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
+                        *(  SDiskScaleHeightR+sqrt(POW(zheight,2)
                           + POW(SDiskScaleHeightz,2))
                          );
 
@@ -493,10 +496,13 @@ int grid::ComputeAccelerationFieldExternal()
 
         zheight = AngularMomentumx*xpos + AngularMomentumy*ypos + AngularMomentumz*zpos;
 
-        // position in plane of disk
+        // position in plane of disk in code units
         xdisk = xpos - zheight*AngularMomentumx;
         ydisk = ypos - zheight*AngularMomentumy;
         zdisk = zpos - zheight*AngularMomentumz;
+
+        // Put zheight into cgs for easier calculation of acceleration
+        zheight *= LengthUnits;
 
         // again, copied from grid loops above
         radius = sqrt(rsquared) * LengthUnits;
@@ -507,14 +513,14 @@ int grid::ComputeAccelerationFieldExternal()
         accelsph += (GravConst)*MBulge/POW(radius+rBulge,2);
 
         accelcylR = GravConst*MSDisk*rcyl/sqrt(POW(POW(rcyl,2)
-                  + POW(SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
+                  + POW(SDiskScaleHeightR+sqrt(POW(zheight,2)
                   + POW(SDiskScaleHeightz,2)),2),3));
 
-        accelcylz = GravConst*MSDisk/sqrt(POW(zheight*LengthUnits,2)
-                  + POW(SDiskScaleHeightz,2))*zheight*LengthUnits/sqrt(POW(POW(rcyl,2)
-                  + POW(SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
+        accelcylz = GravConst*MSDisk/sqrt(POW(zheight,2)
+                  + POW(SDiskScaleHeightz,2))*zheight/sqrt(POW(POW(rcyl,2)
+                  + POW(SDiskScaleHeightR+sqrt(POW(zheight,2)
                   + POW(SDiskScaleHeightz,2)),2),3))
-                    *(  SDiskScaleHeightR+sqrt(POW(zheight*LengthUnits,2)
+                    *(  SDiskScaleHeightR+sqrt(POW(zheight,2)
                       + POW(SDiskScaleHeightz,2))
                      );
 

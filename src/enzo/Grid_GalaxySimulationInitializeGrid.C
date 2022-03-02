@@ -1,3 +1,4 @@
+
 /***********************************************************************
 [6~/
 /  GRID CLASS (INITIALIZE THE GRID FOR A GALAXY SIMULATION)
@@ -392,9 +393,15 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	if (GridRank > 2)
 	  z = CellLeftEdge[2][k] + 0.5*CellWidth[2][k];
 
-	for (dim = 0; dim < MAX_DIMENSION; dim++)
+  if ( (abs(x - 0.500030517578125) < 1e-14) &
+      (abs(y - 0.506134033203125) < 1e-14) &
+      (abs(z - 0.500030517578125) < 1e-14) )
+    printf("FOUND THE DESIRED CELL; BREAK HERE\n");
+
+	for (dim = 0; dim < MAX_DIMENSION; dim++){
 	  Velocity[dim] = 0;
-	disk_vel[dim] = 0;
+	  disk_vel[dim] = 0;
+  }
 
 	/* Find distance from center. */
 
@@ -509,9 +516,9 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 	    // Matrix is orthogonal by construction so inverse = transpose
 	    for (i=0;i<3;i++)
 	      for (j=i+1;j<3;j++){
-		temp = inv[i][j];
-		inv[i][j] = inv[j][i];
-		inv[j][i] = temp;
+          temp = inv[i][j];
+          inv[i][j] = inv[j][i];
+          inv[j][i] = temp;
 	      }
 
 	    DiskDensity = (GasMass * SolarMass
@@ -543,11 +550,11 @@ int grid::GalaxySimulationInitializeGrid(FLOAT DiskRadius,
 				       GalaxyMass, ScaleHeightR,
 				       ScaleHeightz, DMConcentration, Time);
 
-	    else if( DiskGravity > 0 ) // me
+	    else if( DiskGravity > 0 )
 	      DiskVelocityMag = DiskGravityCircularVelocity(r_sph*LengthUnits,
 							    rcyl*LengthUnits,
 							    zheight*LengthUnits)
-		/VelocityUnits;
+		    /VelocityUnits;
         
 	    if (PointSourceGravity*DiskGravity != FALSE ) 
 	      ENZO_FAIL("Cannot activate both PointSource and Disk gravity options for Isolated Galaxy");
@@ -853,7 +860,7 @@ double DiskGravityStellarAccel(double rcyl, double z){
               / sqrt(POW(
                     POW(rcyl,2)
                   + POW(DiskGravityStellarDiskScaleHeightR*Mpc
-                        + sqrt(POW(z*LengthUnits,2)
+                        + sqrt(POW(z,2)
                              + POW(DiskGravityStellarDiskScaleHeightz*Mpc,2)),
                         2),
                      3));
